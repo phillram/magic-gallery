@@ -119,6 +119,45 @@ export async function searchCards(
   }
 }
 
+// Every printing of a card shares one oracle id, so that is what gathers a card's
+// other versions. Reversible cards carry no oracle id, and an exact name match is the
+// closest stand-in there. The game:paper filter matches the browser on the home page,
+// so the gallery never offers a printing the rest of the app refuses to show.
+function printsQuery(card: Card): string {
+  const identity = card.oracle_id ? `oracleid:${card.oracle_id}` : `!"${card.name}"`;
+  return `${identity} game:paper`;
+}
+
+export async function fetchCardPrints(
+  card: Card,
+  page: number = 1
+): Promise<{ cards: Card[]; total: number; hasMore: boolean }> {
+  try {
+    const response = await fetch(
+      `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(printsQuery(card))}` +
+        `&unique=prints&order=released&dir=desc&page=${page}`,
+      { headers: SCRYFALL_HEADERS }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { cards: [], total: 0, hasMore: false };
+      }
+      throw new Error(`Scryfall prints search failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      cards: data.data || [],
+      total: data.total_cards || 0,
+      hasMore: Boolean(data.has_more),
+    };
+  } catch (error) {
+    console.error('Error fetching card prints:', error);
+    return { cards: [], total: 0, hasMore: false };
+  }
+}
+
 // A card Scryfall does not have and a Scryfall request that was refused both leave us
 // with no card to render, but only one of them is the visitor's fault. Telling them
 // apart is what stops a broken lookup from hiding behind the "Card Not Found" page.

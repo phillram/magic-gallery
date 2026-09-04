@@ -15,6 +15,8 @@ export type CardFace = {
 
 export type Card = {
   id: string;
+  // Absent on reversible cards, which carry it per face instead.
+  oracle_id?: string;
   name: string;
   uri: string;
   scryfall_uri: string;
@@ -50,6 +52,12 @@ export type Card = {
   nonfoil: boolean;
   oversized: boolean;
   finishes: string[];
+  frame_effects?: string[];
+  promo_types?: string[];
+  promo?: boolean;
+  border_color?: string;
+  full_art?: boolean;
+  textless?: boolean;
 };
 
 export type Set = {

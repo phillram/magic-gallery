@@ -38,6 +38,13 @@ export type Card = {
   keywords?: string[];
   color_identity?: string[];
   games: string[];
+  artist?: string;
+  collector_number?: string;
+  prices?: {
+    usd: string | null;
+    usd_foil: string | null;
+    eur: string | null;
+  };
   reserved: boolean;
   foil: boolean;
   nonfoil: boolean;

@@ -13,6 +13,7 @@ export default function RandomCardButton() {
     setIsLoading(true);
     try {
       const card = await fetchRandomCard();
+
       if (card) {
         router.push(`/card/${card.id}`);
       }

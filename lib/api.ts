@@ -2,9 +2,33 @@ import { Card, Set, FilterOptions } from './types';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
+// Scryfall sorts server side, so every option here is one it already supports.
+export const SORT_OPTIONS = [
+  { key: 'released_desc', label: 'Newest first', order: 'released', dir: 'desc' },
+  { key: 'released_asc', label: 'Oldest first', order: 'released', dir: 'asc' },
+  { key: 'name_asc', label: 'Name, A to Z', order: 'name', dir: 'asc' },
+  { key: 'cmc_asc', label: 'Mana value, low to high', order: 'cmc', dir: 'asc' },
+  { key: 'cmc_desc', label: 'Mana value, high to low', order: 'cmc', dir: 'desc' },
+  { key: 'rarity_desc', label: 'Rarity, high to low', order: 'rarity', dir: 'desc' },
+  { key: 'usd_desc', label: 'Price, high to low', order: 'usd', dir: 'desc' },
+  { key: 'edhrec_asc', label: 'Most played in Commander', order: 'edhrec', dir: 'asc' },
+] as const;
+
+export type SortKey = (typeof SORT_OPTIONS)[number]['key'];
+
+export const DEFAULT_SORT: SortKey = 'released_desc';
+
+// Scryfall rejects requests that send an HTTP library's default User-Agent, which is
+// what server-side rendering does. Browsers drop the User-Agent header and send their
+// own, so the same options work on both sides.
+const SCRYFALL_HEADERS = {
+  'User-Agent': 'MagicCardBrowser/1.0',
+  Accept: 'application/json',
+};
+
 export async function fetchSets(): Promise<Set[]> {
   try {
-    const response = await fetch(`${SCRYFALL_API_BASE}/sets`);
+    const response = await fetch(`${SCRYFALL_API_BASE}/sets`, { headers: SCRYFALL_HEADERS });
     const data = await response.json();
     return data.data
       .filter((set: any) => set.released_at && !set.digital)
@@ -15,7 +39,11 @@ export async function fetchSets(): Promise<Set[]> {
   }
 }
 
-export async function searchCards(filters: FilterOptions, page: number = 1): Promise<{ cards: Card[]; total: number }> {
+export async function searchCards(
+  filters: FilterOptions,
+  page: number = 1,
+  sort: SortKey = DEFAULT_SORT
+): Promise<{ cards: Card[]; total: number; hasMore: boolean }> {
   try {
     let query = 'game:paper ';
 
@@ -63,43 +91,78 @@ export async function searchCards(filters: FilterOptions, page: number = 1): Pro
 
     query += queryParts.join(' ');
 
+    const { order, dir } = SORT_OPTIONS.find((option) => option.key === sort) ?? SORT_OPTIONS[0];
+
     const response = await fetch(
-      `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(query)}&order=released&dir=desc&page=${page}`
+      `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(query)}&order=${order}&dir=${dir}&page=${page}`,
+      { headers: SCRYFALL_HEADERS }
     );
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { cards: [], total: 0 };
+        return { cards: [], total: 0, hasMore: false };
       }
-      throw new Error('API Error');
+      throw new Error(`Scryfall search failed with status ${response.status}`);
     }
 
     const data = await response.json();
     return {
       cards: data.data || [],
       total: data.total_cards || 0,
+      // Scryfall decides the page size and says whether another page exists, so trust
+      // it rather than inferring from how many cards came back.
+      hasMore: Boolean(data.has_more),
     };
   } catch (error) {
     console.error('Error searching cards:', error);
-    return { cards: [], total: 0 };
+    return { cards: [], total: 0, hasMore: false };
   }
 }
 
-export async function fetchCardById(id: string): Promise<Card | null> {
+// A card Scryfall does not have and a Scryfall request that was refused both leave us
+// with no card to render, but only one of them is the visitor's fault. Telling them
+// apart is what stops a broken lookup from hiding behind the "Card Not Found" page.
+export type CardLookup =
+  | { card: Card }
+  | { card: null; reason: 'not_found' }
+  | { card: null; reason: 'error'; status: number | null; message: string };
+
+export async function fetchCardById(id: string): Promise<CardLookup> {
   try {
-    const response = await fetch(`${SCRYFALL_API_BASE}/cards/${id}`);
-    if (!response.ok) return null;
-    return await response.json();
+    const response = await fetch(`${SCRYFALL_API_BASE}/cards/${id}`, { headers: SCRYFALL_HEADERS });
+
+    if (response.status === 404) {
+      return { card: null, reason: 'not_found' };
+    }
+
+    if (!response.ok) {
+      const message = `Scryfall card lookup failed with status ${response.status}`;
+      console.error(message);
+      return { card: null, reason: 'error', status: response.status, message };
+    }
+
+    return { card: await response.json() };
   } catch (error) {
     console.error('Error fetching card:', error);
-    return null;
+    return {
+      card: null,
+      reason: 'error',
+      status: null,
+      message: error instanceof Error ? error.message : 'Scryfall card lookup threw',
+    };
   }
 }
 
 export async function fetchRandomCard(): Promise<Card | null> {
   try {
-    const response = await fetch(`${SCRYFALL_API_BASE}/cards/random?q=game:paper`);
-    if (!response.ok) return null;
+    const response = await fetch(`${SCRYFALL_API_BASE}/cards/random?q=game:paper`, {
+      headers: SCRYFALL_HEADERS,
+    });
+    if (!response.ok) {
+      const message = `Scryfall random card failed with status ${response.status}`;
+      console.error(message);
+      return null;
+    }
     return await response.json();
   } catch (error) {
     console.error('Error fetching random card:', error);
@@ -107,31 +170,8 @@ export async function fetchRandomCard(): Promise<Card | null> {
   }
 }
 
-export function getManaSymbol(mana: string): string {
-  const symbols: { [key: string]: string } = {
-    W: '⭕',
-    U: '🔵',
-    B: '⚫',
-    R: '🔴',
-    G: '🟢',
-    X: '❌',
-    0: '0️⃣',
-    1: '1️⃣',
-    2: '2️⃣',
-    3: '3️⃣',
-    4: '4️⃣',
-    5: '5️⃣',
-    6: '6️⃣',
-    7: '7️⃣',
-    8: '8️⃣',
-    9: '9️⃣',
-  };
-  return symbols[mana] || mana;
-}
-
 export function getExternalLinks(card: Card): Record<string, string> {
   const cardName = encodeURIComponent(card.name);
-  const setCode = card.set.toUpperCase();
 
   return {
     Scryfall: card.scryfall_uri,

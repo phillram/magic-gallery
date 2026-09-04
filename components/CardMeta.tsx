@@ -1,0 +1,44 @@
+import { cn } from '@/lib/utils';
+
+// Scryfall serves a set's icon under its code, the same way it serves mana symbols.
+const SET_ICON_BASE_URL = 'https://svgs.scryfall.io/sets';
+
+// Magic's own rarity colors: black, silver, gold, and the orange-red of mythics.
+// Lightened here so they hold up on the dark background.
+const RARITY_CLASSES: Record<string, string> = {
+  common: 'border-slate-500 text-slate-300',
+  uncommon: 'border-slate-300 text-slate-200',
+  rare: 'border-amber-400 text-amber-300',
+  mythic: 'border-orange-500 text-orange-400',
+};
+
+export function SetIcon({ setCode, className }: { setCode: string; className?: string }): JSX.Element {
+  return (
+    <img
+      src={`${SET_ICON_BASE_URL}/${setCode.toLowerCase()}.svg`}
+      alt=""
+      aria-hidden="true"
+      // Set icons are solid black, which is invisible here, so invert them to read
+      // as light on the dark background.
+      className={cn('inline-block h-[1em] w-[1em] invert opacity-70', className)}
+    />
+  );
+}
+
+export function RarityBadge({ rarity, className }: { rarity: string; className?: string }): JSX.Element {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded border px-1.5 py-0.5 text-xs capitalize',
+        RARITY_CLASSES[rarity] ?? 'border-slate-600 text-slate-400',
+        className
+      )}
+    >
+      {rarity}
+    </span>
+  );
+}
+
+export function formatPrice(amount: string | null | undefined, currency: '$' | '€' = '$'): string | null {
+  return amount ? `${currency}${amount}` : null;
+}

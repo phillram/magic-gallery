@@ -1,11 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, FilterOptions } from '@/lib/types';
+import { FilterOptions } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { countActiveFilters } from '@/lib/analytics';
+import { EMPTY_FILTERS } from '@/lib/filter-params';
+import { ManaSymbol } from './ManaSymbols';
+import SetPicker from './SetPicker';
 
 interface FilterSidebarProps {
-  onFilterChange: (filters: FilterOptions) => void;
+  filters: FilterOptions;
+  onFilterChange: (filters: FilterOptions, options?: { replace?: boolean }) => void;
   sets: Array<{ code: string; name: string }>;
   isLoading: boolean;
 }
@@ -20,41 +25,15 @@ const COLOR_NAMES: Record<string, string> = {
   R: 'Red',
   G: 'Green',
 };
-const COLOR_CLASSES: Record<string, string> = {
-  W: 'bg-yellow-100',
-  U: 'bg-blue-400',
-  B: 'bg-gray-800',
-  R: 'bg-red-500',
-  G: 'bg-green-600',
-};
-
-export default function FilterSidebar({ onFilterChange, sets, isLoading }: FilterSidebarProps) {
-  const [filters, setFilters] = useState<FilterOptions>({
-    search: '',
-    sets: [],
-    colors: [],
-    types: [],
-    rarities: [],
-    minMana: null,
-    maxMana: null,
-    exactMana: null,
-  });
-
-  const [manaMode, setManaMode] = useState<'exact' | 'range'>('exact');
+export default function FilterSidebar({ filters, onFilterChange, sets, isLoading }: FilterSidebarProps) {
+  // Only the mode is the sidebar's own business. A link that arrives with a range
+  // already set should open showing the range inputs.
+  const [manaMode, setManaMode] = useState<'exact' | 'range'>(
+    filters.minMana !== null || filters.maxMana !== null ? 'range' : 'exact'
+  );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFilters = { ...filters, search: e.target.value };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
-  };
-
-  const handleSetToggle = (setCode: string) => {
-    const newSets = filters.sets.includes(setCode)
-      ? filters.sets.filter(s => s !== setCode)
-      : [...filters.sets, setCode];
-    const newFilters = { ...filters, sets: newSets };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    onFilterChange({ ...filters, search: e.target.value }, { replace: true });
   };
 
   const handleColorToggle = (color: string) => {
@@ -62,7 +41,6 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
       ? filters.colors.filter(c => c !== color)
       : [...filters.colors, color];
     const newFilters = { ...filters, colors: newColors };
-    setFilters(newFilters);
     onFilterChange(newFilters);
   };
 
@@ -71,7 +49,6 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
       ? filters.types.filter(t => t !== type)
       : [...filters.types, type];
     const newFilters = { ...filters, types: newTypes };
-    setFilters(newFilters);
     onFilterChange(newFilters);
   };
 
@@ -80,14 +57,12 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
       ? filters.rarities.filter(r => r !== rarity)
       : [...filters.rarities, rarity];
     const newFilters = { ...filters, rarities: newRarities };
-    setFilters(newFilters);
     onFilterChange(newFilters);
   };
 
   const handleManaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value ? parseInt(e.target.value) : null;
     const newFilters = { ...filters, exactMana: value };
-    setFilters(newFilters);
     onFilterChange(newFilters);
   };
 
@@ -97,22 +72,25 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
       ...filters,
       [type === 'min' ? 'minMana' : 'maxMana']: numValue,
     };
-    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
+  // Each mode owns its own fields, and the query builder prefers an exact value over
+  // a range. Leaving the old mode's values behind made the newly shown inputs do
+  // nothing, so drop them when the mode changes.
+  const handleManaModeChange = (mode: 'exact' | 'range') => {
+    setManaMode(mode);
+
+    const newFilters =
+      mode === 'exact'
+        ? { ...filters, minMana: null, maxMana: null }
+        : { ...filters, exactMana: null };
+
     onFilterChange(newFilters);
   };
 
   const clearFilters = () => {
-    const defaultFilters: FilterOptions = {
-      search: '',
-      sets: [],
-      colors: [],
-      types: [],
-      rarities: [],
-      minMana: null,
-      maxMana: null,
-      exactMana: null,
-    };
-    setFilters(defaultFilters);
+    const defaultFilters = EMPTY_FILTERS;
     setManaMode('exact');
     onFilterChange(defaultFilters);
   };
@@ -145,23 +123,18 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
       {/* Sets */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-slate-200 mb-2">Sets</h3>
-        <select
-          value={filters.sets[0] || ''}
-          onChange={(e) => {
-            const newFilters = { ...filters, sets: e.target.value ? [e.target.value] : [] };
-            setFilters(newFilters);
+        <SetPicker
+          sets={sets}
+          selected={filters.sets}
+          disabled={isLoading}
+          onToggle={(code) => {
+            const newSets = filters.sets.includes(code)
+              ? filters.sets.filter((s) => s !== code)
+              : [...filters.sets, code];
+            const newFilters = { ...filters, sets: newSets };
             onFilterChange(newFilters);
           }}
-          disabled={isLoading}
-          className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none disabled:opacity-50"
-        >
-          <option value="">All Sets</option>
-          {sets.map((set) => (
-            <option key={set.code} value={set.code}>
-              {set.name}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {/* Mana Colors */}
@@ -173,14 +146,18 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
               key={color}
               onClick={() => handleColorToggle(color)}
               disabled={isLoading}
+              title={COLOR_NAMES[color]}
+              aria-label={COLOR_NAMES[color]}
+              aria-pressed={filters.colors.includes(color)}
               className={cn(
-                'p-2 rounded transition-opacity text-sm font-bold text-white',
-                filters.colors.includes(color) ? 'ring-2 ring-white opacity-100' : 'opacity-60 hover:opacity-80',
-                COLOR_CLASSES[color],
-                'disabled:opacity-50'
+                'flex items-center justify-center rounded p-1 transition-all',
+                filters.colors.includes(color)
+                  ? 'bg-slate-700 ring-2 ring-white opacity-100'
+                  : 'opacity-70 hover:opacity-100',
+                'disabled:opacity-40'
               )}
             >
-              {color}
+              <ManaSymbol symbol={`{${color}}`} className="h-7 w-7" />
             </button>
           ))}
         </div>
@@ -229,7 +206,7 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
         <h3 className="text-sm font-semibold text-slate-200 mb-3">Mana Value</h3>
         <div className="flex gap-2 mb-3">
           <button
-            onClick={() => setManaMode('exact')}
+            onClick={() => handleManaModeChange('exact')}
             className={cn(
               'flex-1 px-2 py-1 text-xs rounded transition-colors',
               manaMode === 'exact'
@@ -240,7 +217,7 @@ export default function FilterSidebar({ onFilterChange, sets, isLoading }: Filte
             Exact
           </button>
           <button
-            onClick={() => setManaMode('range')}
+            onClick={() => handleManaModeChange('range')}
             className={cn(
               'flex-1 px-2 py-1 text-xs rounded transition-colors',
               manaMode === 'range'

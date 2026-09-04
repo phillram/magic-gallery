@@ -1,4 +1,4 @@
-import { fetchCardById } from '@/lib/api';
+import { fetchCardById, CardLookup } from '@/lib/api';
 import CardDetail from '@/components/CardDetail';
 import Header from '@/components/Header';
 import Link from 'next/link';
@@ -9,9 +9,9 @@ interface CardPageProps {
 }
 
 export default async function CardPage({ params }: CardPageProps) {
-  const card = await fetchCardById(params.id);
+  const lookup = await fetchCardById(params.id);
 
-  if (!card) {
+  if (!lookup.card) {
     notFound();
   }
 
@@ -22,7 +22,7 @@ export default async function CardPage({ params }: CardPageProps) {
         <Link href="/" className="text-blue-400 hover:text-blue-300 mb-6 inline-block">
           ← Back to Cards
         </Link>
-        <CardDetail card={card} />
+        <CardDetail card={lookup.card} />
       </div>
     </div>
   );

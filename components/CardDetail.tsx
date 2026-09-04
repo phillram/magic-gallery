@@ -2,8 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Card, CardFace } from '@/lib/types';
+import { Card } from '@/lib/types';
 import { useState } from 'react';
+import { getExternalLinks } from '@/lib/api';
+import { ManaCost, SymbolText } from './ManaSymbols';
+import { RarityBadge, SetIcon, formatPrice } from './CardMeta';
 
 interface CardDetailProps {
   card: Card;
@@ -16,18 +19,7 @@ export default function CardDetail({ card }: CardDetailProps) {
   const currentFace = isDoubleSided && card.card_faces ? card.card_faces[currentFaceIndex] : null;
   const displayCard = currentFace || card;
 
-  const getExternalLinks = () => {
-    const cardName = encodeURIComponent(card.name);
-    return {
-      Scryfall: card.scryfall_uri,
-      Gatherer: `https://gatherer.wizards.com/Pages/Card/Details.aspx?name=${cardName}`,
-      TCGPlayer: `https://www.tcgplayer.com/search/all/product?productLineName=magic&q=${cardName}`,
-      EDHREC: `https://edhrec.com/cards/${card.name.toLowerCase().replace(/ /g, '-')}`,
-      Archidekt: `https://archidekt.com/cards/${card.id}`,
-    };
-  };
-
-  const externalLinks = getExternalLinks();
+  const externalLinks = getExternalLinks(card);
 
   return (
     <div className="bg-slate-900 rounded-lg p-8 max-w-4xl mx-auto">
@@ -52,7 +44,9 @@ export default function CardDetail({ card }: CardDetailProps) {
               {card.card_faces.map((face, index) => (
                 <button
                   key={index}
-                  onClick={() => setCurrentFaceIndex(index)}
+                  onClick={() => {
+                    setCurrentFaceIndex(index);
+                  }}
                   className={`px-4 py-2 rounded transition-colors ${
                     currentFaceIndex === index
                       ? 'bg-blue-600 text-white'
@@ -78,7 +72,7 @@ export default function CardDetail({ card }: CardDetailProps) {
             <div className="space-y-2 text-sm">
               <p>
                 <span className="text-slate-400">Mana Cost:</span>{' '}
-                <span className="text-slate-100">{displayCard.mana_cost || 'N/A'}</span>
+                <ManaCost cost={displayCard.mana_cost} className="text-slate-100" />
               </p>
               <p>
                 <span className="text-slate-400">CMC:</span>{' '}
@@ -92,14 +86,24 @@ export default function CardDetail({ card }: CardDetailProps) {
                   </span>
                 </p>
               )}
-              <p>
-                <span className="text-slate-400">Set:</span>{' '}
+              <p className="flex items-center gap-1.5">
+                <span className="text-slate-400">Set:</span>
+                <SetIcon setCode={card.set} />
                 <span className="text-slate-100">{card.set_name}</span>
+                {card.collector_number && (
+                  <span className="text-slate-400">#{card.collector_number}</span>
+                )}
               </p>
               {card.rarity && (
+                <p className="flex items-center gap-2">
+                  <span className="text-slate-400">Rarity:</span>
+                  <RarityBadge rarity={card.rarity} />
+                </p>
+              )}
+              {card.artist && (
                 <p>
-                  <span className="text-slate-400">Rarity:</span>{' '}
-                  <span className="text-slate-100 capitalize">{card.rarity}</span>
+                  <span className="text-slate-400">Artist:</span>{' '}
+                  <span className="text-slate-100">{card.artist}</span>
                 </p>
               )}
               <p>
@@ -113,13 +117,27 @@ export default function CardDetail({ card }: CardDetailProps) {
             <div className="bg-slate-800 p-4 rounded">
               <h2 className="text-lg font-semibold text-slate-100 mb-2">Card Text</h2>
               <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                {displayCard.oracle_text}
+                <SymbolText text={displayCard.oracle_text} />
               </p>
             </div>
           )}
 
           <div className="bg-slate-800 p-4 rounded">
             <h2 className="text-lg font-semibold text-slate-100 mb-3">External Links</h2>
+            {(formatPrice(card.prices?.usd) || formatPrice(card.prices?.usd_foil)) && (
+              <p className="mb-3 flex items-center gap-4 text-sm">
+                {formatPrice(card.prices?.usd) && (
+                  <span className="text-slate-100">
+                    <span className="text-slate-400">Normal</span> {formatPrice(card.prices?.usd)}
+                  </span>
+                )}
+                {formatPrice(card.prices?.usd_foil) && (
+                  <span className="text-slate-100">
+                    <span className="text-slate-400">Foil</span> {formatPrice(card.prices?.usd_foil)}
+                  </span>
+                )}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(externalLinks).map(([name, url]) => (
                 <a

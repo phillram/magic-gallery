@@ -16,6 +16,7 @@ A comprehensive Next.js web application for browsing, searching, and filtering M
 - 🔄 **Load More** - Pagination for browsing large sets
 - 🌙 **Dark Mode** - Eye-friendly dark theme throughout
 - 🖼️ **Card Images** - High-quality card images from Scryfall
+- 🗂️ **All Versions** - See every paper printing of a card, grouped by set, with variant and price details
 - 🔀 **Double-Sided Cards** - Toggle between front and back of transform cards
 - 🔗 **External Links** - Direct links to Scryfall, Gatherer, TCGPlayer, EDHREC, and Archidekt
 - 📖 **Full Card Details** - Complete card text, mana cost, type, power/toughness, and more

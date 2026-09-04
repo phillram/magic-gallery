@@ -113,6 +113,13 @@ export default function CardDetail({ card }: CardDetailProps) {
             </div>
           </div>
 
+          <Link
+            href={`/card/${card.id}/versions`}
+            className="block rounded bg-slate-800 px-4 py-3 text-center font-semibold text-blue-400 transition-colors hover:bg-slate-700 hover:text-blue-300"
+          >
+            Show all versions
+          </Link>
+
           {displayCard.oracle_text && (
             <div className="bg-slate-800 p-4 rounded">
               <h2 className="text-lg font-semibold text-slate-100 mb-2">Card Text</h2>

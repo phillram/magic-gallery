@@ -4,7 +4,7 @@ import { Card } from '@/lib/types';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ManaCost } from './ManaSymbols';
-import { RarityBadge, SetIcon, formatPrice } from './CardMeta';
+import { CARD_IMAGE_CLASSES, RarityBadge, SetIcon, formatPrice } from './CardMeta';
 import { cn } from '@/lib/utils';
 
 interface CardGridProps {
@@ -15,10 +15,6 @@ interface CardGridProps {
 }
 
 const GRID_CLASSES = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
-
-// Magic cards are 63x88mm, and Scryfall's images keep that shape. Holding the same
-// ratio here means the art is never cropped and a card never changes size as it loads.
-const CARD_IMAGE_CLASSES = 'relative w-full aspect-[5/7] bg-slate-900 overflow-hidden';
 
 const SKELETON_COUNT = 8;
 

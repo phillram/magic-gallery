@@ -238,11 +238,21 @@ export type PrintsUnique = 'prints' | 'art';
 // "what does this card look like?" and are what the gallery opens on.
 export const DEFAULT_PRINTS_UNIQUE: PrintsUnique = 'art';
 
+// A card always matches its own printings query, so an empty answer here nearly always
+// means the request never got through. The gallery used to read that as a fact about the
+// card and say "only one printing", which is the same mistake the search flag prevents.
+export type PrintsResult = {
+  cards: Card[];
+  total: number;
+  hasMore: boolean;
+  failed: boolean;
+};
+
 export async function fetchCardPrints(
   card: Card,
   page: number = 1,
   unique: PrintsUnique = DEFAULT_PRINTS_UNIQUE
-): Promise<{ cards: Card[]; total: number; hasMore: boolean }> {
+): Promise<PrintsResult> {
   try {
     const response = await fetch(
       `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(printsQuery(card))}` +
@@ -251,8 +261,9 @@ export async function fetchCardPrints(
     );
 
     if (!response.ok) {
+      // A card with no paper printing at all answers 404, which is a real result.
       if (response.status === 404) {
-        return { cards: [], total: 0, hasMore: false };
+        return { cards: [], total: 0, hasMore: false, failed: false };
       }
       throw new Error(`Scryfall prints search failed with status ${response.status}`);
     }
@@ -262,10 +273,11 @@ export async function fetchCardPrints(
       cards: data.data || [],
       total: data.total_cards || 0,
       hasMore: Boolean(data.has_more),
+      failed: false,
     };
   } catch (error) {
     console.error('Error fetching card prints:', error);
-    return { cards: [], total: 0, hasMore: false };
+    return { cards: [], total: 0, hasMore: false, failed: true };
   }
 }
 

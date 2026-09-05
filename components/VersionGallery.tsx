@@ -19,6 +19,9 @@ interface VersionGalleryProps {
   total: number;
   initialHasMore: boolean;
   initialUnique: PrintsUnique;
+  // Whether the server reached Scryfall for the first page. An empty gallery means one
+  // thing when Scryfall answered, and another when it did not.
+  initialFailed: boolean;
   // The browse query the visitor started from, kept on every link out of here.
   from?: string;
 }
@@ -123,6 +126,7 @@ export default function VersionGallery({
   total,
   initialHasMore,
   initialUnique,
+  initialFailed,
   from,
 }: VersionGalleryProps): JSX.Element {
   const [prints, setPrints] = useState<Card[]>(initialPrints);
@@ -136,7 +140,7 @@ export default function VersionGallery({
   const [pendingUnique, setPendingUnique] = useState<PrintsUnique | null>(null);
   // Each mode counts what it shows, so the total moves with the switch.
   const [uniqueTotal, setUniqueTotal] = useState(total);
-  const [hasFailed, setHasFailed] = useState(false);
+  const [hasFailed, setHasFailed] = useState(initialFailed);
 
   const groups = useMemo(() => groupPrintsBySet(prints), [prints]);
   const currentArtKey = useMemo(() => printArtKey(card), [card]);
@@ -151,7 +155,9 @@ export default function VersionGallery({
       const nextPage = page + 1;
       const more = await fetchCardPrints(card, nextPage, unique);
 
-      if (more.cards.length === 0) {
+      // A page that never arrived leaves the gallery where it was. Counting it as read
+      // would skip those printings for good.
+      if (more.failed) {
         setHasFailed(true);
         return;
       }
@@ -164,12 +170,9 @@ export default function VersionGallery({
     }
   };
 
-  // Scryfall picks the printings, so the switch starts the run again from page one.
-  const handleUniqueChange = async (nextUnique: PrintsUnique) => {
-    if (nextUnique === unique) {
-      return;
-    }
-
+  // Scryfall picks the printings, so a change of mode starts the run again from page one.
+  // The retry button lands here too, with the mode already on screen.
+  const loadFirstPage = async (nextUnique: PrintsUnique) => {
     setPendingUnique(nextUnique);
     setIsLoading(true);
     setHasFailed(false);
@@ -177,10 +180,9 @@ export default function VersionGallery({
     try {
       const next = await fetchCardPrints(card, 1, nextUnique);
 
-      // A card with printings has art, so an empty answer here is a refused request
-      // rather than a real one. Keeping what is on screen beats blanking the page,
-      // and dropping the pending mode puts the switch back where it was.
-      if (next.cards.length === 0) {
+      // Keeping what is on screen beats blanking the page, and dropping the pending mode
+      // puts the switch back where it was.
+      if (next.failed) {
         setHasFailed(true);
         return;
       }
@@ -196,19 +198,43 @@ export default function VersionGallery({
     }
   };
 
+  const handleUniqueChange = (nextUnique: PrintsUnique) => {
+    if (nextUnique === unique) {
+      return;
+    }
+    void loadFirstPage(nextUnique);
+  };
+
+  // An empty gallery has two causes, and the visitor can act on only one of them.
   if (prints.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-ink-700 bg-ink-900/50 px-6 py-14 text-center">
-        <h2 className="font-display text-xl text-ink-100">Only one printing</h2>
+        <h2 className="font-display text-xl text-ink-100">
+          {hasFailed ? 'Scryfall did not answer' : 'No paper printing'}
+        </h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-ink-400">
-          We could not find another paper printing of this card.
+          {hasFailed
+            ? 'The printings come from Scryfall, and the request did not get through. Try again in a moment.'
+            : 'This card was never printed on paper, so there is nothing to compare here.'}
         </p>
-        <Link
-          href={cardHref(card.id, from)}
-          className="mt-5 inline-block rounded-md border border-ink-600 px-4 py-2 text-sm font-semibold text-ink-200 transition-colors hover:border-gold-500 hover:text-gold-200"
-        >
-          Back to the card
-        </Link>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          {hasFailed && (
+            <button
+              type="button"
+              onClick={() => void loadFirstPage(unique)}
+              disabled={isLoading}
+              className="rounded-md border border-gold-600/60 bg-gold-500/10 px-4 py-2 text-sm font-semibold text-gold-200 transition-colors hover:bg-gold-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading ? 'Loading…' : 'Try again'}
+            </button>
+          )}
+          <Link
+            href={cardHref(card.id, from)}
+            className="rounded-md border border-ink-600 px-4 py-2 text-sm font-semibold text-ink-200 transition-colors hover:border-gold-500 hover:text-gold-200"
+          >
+            Back to the card
+          </Link>
+        </div>
       </div>
     );
   }

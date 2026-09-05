@@ -132,12 +132,16 @@ export default function CardDetail({ card, from }: CardDetailProps): JSX.Element
             </div>
           )}
 
-          <Link
-            href={versionsHref(card.id, from)}
-            className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-gold-600/60 bg-gold-500/10 px-4 py-3 text-sm font-semibold text-gold-200 transition-colors hover:border-gold-400 hover:bg-gold-500/20"
-          >
-            See every printing of this card
-          </Link>
+          {/* The gallery shows paper printings, so a card that only ever existed online
+              has nothing to open. The link used to lead to an empty page. */}
+          {card.games.includes('paper') && (
+            <Link
+              href={versionsHref(card.id, from)}
+              className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-gold-600/60 bg-gold-500/10 px-4 py-3 text-sm font-semibold text-gold-200 transition-colors hover:border-gold-400 hover:bg-gold-500/20"
+            >
+              See every printing of this card
+            </Link>
+          )}
         </div>
       </div>
 

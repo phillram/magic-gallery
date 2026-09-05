@@ -128,14 +128,24 @@ function printsQuery(card: Card): string {
   return `${identity} game:paper`;
 }
 
+// Scryfall can collapse a card's printings down to one per piece of art, which drops
+// the reprints that only repeat art already on screen, and with them the sets that hold
+// nothing else. It keeps the oldest printing of an art rather than the newest.
+export type PrintsUnique = 'prints' | 'art';
+
+// Most reprints reuse art, so the arts are the shorter and more interesting answer to
+// "what does this card look like?" and are what the gallery opens on.
+export const DEFAULT_PRINTS_UNIQUE: PrintsUnique = 'art';
+
 export async function fetchCardPrints(
   card: Card,
-  page: number = 1
+  page: number = 1,
+  unique: PrintsUnique = DEFAULT_PRINTS_UNIQUE
 ): Promise<{ cards: Card[]; total: number; hasMore: boolean }> {
   try {
     const response = await fetch(
       `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(printsQuery(card))}` +
-        `&unique=prints&order=released&dir=desc&page=${page}`,
+        `&unique=${unique}&order=released&dir=desc&page=${page}`,
       { headers: SCRYFALL_HEADERS }
     );
 

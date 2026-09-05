@@ -189,6 +189,15 @@ export default function CardGrid({
         ))}
       </div>
 
+      {/* A page that never arrived leaves the cards above it untouched, so the failure
+          has to be said here. Without it the button goes back to its resting state and
+          the visitor reads that as the end of the results. */}
+      {failed && (
+        <p role="status" className="text-center text-sm text-rarity-mythic">
+          Scryfall did not answer, so no more cards were added. Try again in a moment.
+        </p>
+      )}
+
       {hasMore && (
         <div className="flex justify-center">
           <button
@@ -197,7 +206,7 @@ export default function CardGrid({
             disabled={isLoading}
             className="rounded-md border border-ink-600 bg-ink-900 px-6 py-3 font-semibold text-ink-100 transition-colors hover:border-gold-500 hover:text-gold-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLoading ? 'Loading…' : 'Show more cards'}
+            {isLoading ? 'Loading…' : failed ? 'Try again' : 'Show more cards'}
           </button>
         </div>
       )}

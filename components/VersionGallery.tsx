@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useMemo, useState, type JSX } from 'react';
 import { Card } from '@/lib/types';
 import { fetchCardPrints, PrintsUnique } from '@/lib/api';
+import { appendNewCards } from '@/lib/cards';
 import { cardHref } from '@/lib/filter-params';
 import { groupPrintsBySet, printArtKey, printVariantLabels } from '@/lib/prints';
 import { CARD_IMAGE_CLASSES, RarityBadge, SetIcon, VariantBadge, formatPrice } from './CardMeta';
@@ -155,7 +156,7 @@ export default function VersionGallery({
         return;
       }
 
-      setPrints((current) => [...current, ...more.cards]);
+      setPrints((current) => appendNewCards(current, more.cards));
       setPage(nextPage);
       setHasMore(more.hasMore);
     } finally {

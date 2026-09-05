@@ -86,9 +86,17 @@ function readNumber(params: URLSearchParams, key: string): number | null {
   return Number.isNaN(value) ? null : value;
 }
 
+// A hand-typed "?q=%20%20" is the same nothing as no q at all. Carried through, it
+// counts as a filter and draws a chip with no word in it. A term with any other
+// character keeps its spaces, because they are part of what was searched for.
+function readSearch(params: URLSearchParams): string {
+  const raw = params.get(KEYS.search) ?? '';
+  return raw.trim() === '' ? '' : raw;
+}
+
 export function filtersFromParams(params: URLSearchParams): FilterOptions {
   return {
-    search: params.get(KEYS.search) ?? '',
+    search: readSearch(params),
     sets: readList(params, KEYS.sets),
     colors: readList(params, KEYS.colors),
     types: readList(params, KEYS.types),

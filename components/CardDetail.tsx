@@ -238,7 +238,10 @@ export default function CardDetail({ card, from }: CardDetailProps): JSX.Element
                   rel="noopener noreferrer"
                   className="flex items-baseline justify-between gap-3 rounded-lg border border-ink-800 px-3 py-2.5 transition-colors hover:border-gold-600/60 hover:bg-ink-850"
                 >
-                  <span className="text-sm font-medium text-ink-100">{link.name}</span>
+                  <span className="text-sm font-medium text-ink-100">
+                    {link.name}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </span>
                   <span className="text-xs text-ink-500">{link.hint}</span>
                 </a>
               </li>

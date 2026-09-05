@@ -67,6 +67,14 @@ export type Card = {
     usd_foil: string | null;
     eur: string | null;
   };
+  // TCGplayer numbers its own products. Cards it does not sell carry no number.
+  tcgplayer_id?: number;
+  // Scryfall builds these links itself, which keeps each site's own URL rules out of this
+  // app. The gatherer link is absent for a printing that has no multiverse id.
+  related_uris?: {
+    gatherer?: string;
+    edhrec?: string;
+  };
   reserved: boolean;
   foil: boolean;
   nonfoil: boolean;

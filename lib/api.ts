@@ -290,33 +290,61 @@ export async function fetchRandomCard(): Promise<Card | null> {
 }
 
 // Each link says what the site answers, because a row of brand names alone makes the
-// visitor open all five to find out which one holds the rulings.
+// visitor open every one to find out which holds the rulings.
 export type ExternalLink = { name: string; url: string; hint: string };
 
-export function getExternalLinks(card: Card): ExternalLink[] {
-  const cardName = encodeURIComponent(card.name);
+// Gatherer addresses a card by the multiverse id of the printing, not by its name.
+function buildGathererUrl(card: Card): string {
+  if (card.related_uris?.gatherer) {
+    return card.related_uris.gatherer;
+  }
+  // Some paper printings carry no multiverse id. The name search still finds them, where
+  // the card page answers a name with the Gatherer home page.
+  return `https://gatherer.wizards.com/search?searchTerm=${encodeURIComponent(card.name)}`;
+}
 
-  return [
+// The product page shows the exact printing and its sellers. TCGplayer numbers only the
+// cards it sells, so the rest fall back to a search.
+function buildTcgplayerUrl(card: Card): string {
+  if (card.tcgplayer_id) {
+    return `https://www.tcgplayer.com/product/${card.tcgplayer_id}`;
+  }
+  return `https://www.tcgplayer.com/search/all/product?productLineName=magic&q=${encodeURIComponent(card.name)}`;
+}
+
+// EDHREC removes the punctuation that a card name carries, so "Ajani's Pridemate" becomes
+// "ajanis-pridemate" and "Fire // Ice" becomes "fire-ice". The redirect route applies
+// those rules for us, which keeps this app from copying them and getting them wrong.
+function buildEdhrecUrl(card: Card): string {
+  return (
+    card.related_uris?.edhrec ?? `https://edhrec.com/route/?cc=${encodeURIComponent(card.name)}`
+  );
+}
+
+// Archidekt has no page for a single card. Its card search is the only public route, and
+// the search reads the query from "q".
+function buildArchidektUrl(card: Card): string {
+  return `https://archidekt.com/search/cards?q=${encodeURIComponent(card.name)}`;
+}
+
+export function getExternalLinks(card: Card): ExternalLink[] {
+  const links: ExternalLink[] = [
     { name: 'Scryfall', url: card.scryfall_uri, hint: 'Rulings and printings' },
-    {
-      name: 'Gatherer',
-      url: `https://gatherer.wizards.com/Pages/Card/Details.aspx?name=${cardName}`,
-      hint: 'The official card page',
-    },
-    {
-      name: 'TCGplayer',
-      url: `https://www.tcgplayer.com/search/all/product?productLineName=magic&q=${cardName}`,
-      hint: 'Buy a copy',
-    },
-    {
-      name: 'EDHREC',
-      url: `https://edhrec.com/cards/${card.name.toLowerCase().replace(/ /g, '-')}`,
-      hint: 'Commander decks and pairings',
-    },
-    {
-      name: 'Archidekt',
-      url: `https://archidekt.com/cards/${card.id}`,
-      hint: 'Add it to a deck',
-    },
   ];
+
+  // These three sites cover paper cards only. A card that exists on Arena or Magic Online
+  // alone gets no link to them, because Gatherer answers with its home page, TCGplayer
+  // sells nothing to find, and EDHREC answers with a 404.
+  if (card.games.includes('paper')) {
+    links.push(
+      { name: 'Gatherer', url: buildGathererUrl(card), hint: 'The official card page' },
+      { name: 'TCGplayer', url: buildTcgplayerUrl(card), hint: 'Buy a copy' },
+      { name: 'EDHREC', url: buildEdhrecUrl(card), hint: 'Commander decks and pairings' }
+    );
+  }
+
+  // Archidekt indexes the digital cards too, so it is the one link every card keeps.
+  links.push({ name: 'Archidekt', url: buildArchidektUrl(card), hint: 'Add it to a deck' });
+
+  return links;
 }

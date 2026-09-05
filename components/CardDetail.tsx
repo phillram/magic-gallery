@@ -109,7 +109,7 @@ export default function CardDetail({ card, from }: CardDetailProps): JSX.Element
               alt={shown.name}
               width={488}
               height={680}
-              className="card-frame w-full rounded-xl"
+              className="card-frame w-full"
               priority
             />
           ) : (

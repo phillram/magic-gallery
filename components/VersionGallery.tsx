@@ -6,6 +6,7 @@ import { useMemo, useState, type JSX } from 'react';
 import { Card } from '@/lib/types';
 import { fetchCardPrints, PrintsUnique } from '@/lib/api';
 import { appendNewCards } from '@/lib/cards';
+import { releaseYear } from '@/lib/dates';
 import { cardHref } from '@/lib/filter-params';
 import { groupPrintsBySet, printArtKey, printVariantLabels } from '@/lib/prints';
 import { CARD_IMAGE_CLASSES, RarityBadge, SetIcon, VariantBadge, formatPrice } from './CardMeta';
@@ -251,7 +252,7 @@ export default function VersionGallery({
               {group.name}
             </h2>
             <span className="text-sm text-ink-500">
-              {new Date(group.releasedAt).getFullYear()} · {group.cards.length}{' '}
+              {releaseYear(group.releasedAt)} · {group.cards.length}{' '}
               {group.cards.length === 1 ? one : many}
             </span>
           </div>

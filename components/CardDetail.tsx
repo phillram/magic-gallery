@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, type JSX, type ReactNode } from 'react';
 import { Card, CardFace } from '@/lib/types';
 import { getExternalLinks } from '@/lib/api';
+import { formatReleaseDate } from '@/lib/dates';
 import { versionsHref } from '@/lib/filter-params';
 import { LEGALITY_LABELS, SHOWN_FORMATS } from '@/lib/mtg';
 import { cn } from '@/lib/utils';
@@ -187,13 +188,7 @@ export default function CardDetail({ card, from }: CardDetailProps): JSX.Element
             )}
             <Fact label="Mana value">{shown.cmc ?? card.cmc}</Fact>
             {artist && <Fact label="Artist">{artist}</Fact>}
-            <Fact label="Released">
-              {new Date(card.released_at).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Fact>
+            <Fact label="Released">{formatReleaseDate(card.released_at)}</Fact>
             {card.edhrec_rank && (
               <Fact label="Commander rank">
                 #{card.edhrec_rank.toLocaleString('en-US')}

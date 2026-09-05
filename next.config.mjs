@@ -8,12 +8,21 @@ const nextConfig = {
         hostname: '*.scryfall.io',
       },
     ],
-    // Next's own image optimizer asks Scryfall for the file with the User-Agent that
-    // Node sends by default, and Scryfall answers 400, so a local run shows card
-    // frames with no art in them. Vercel optimizes with its own fetcher, which
-    // Scryfall accepts, so only the runs off Vercel take the images straight from
-    // the Scryfall CDN.
-    unoptimized: process.env.VERCEL !== '1',
+    // Card art comes straight from the Scryfall CDN, on every host.
+    //
+    // There is little for an optimizer to do here. Scryfall publishes each card at the
+    // three sizes this app asks for, already compressed, and serves them from its own
+    // CDN. Optimizing them re-encodes a file that is already the right size, and puts
+    // a hop between the visitor and a CDN that was already close to them.
+    //
+    // It also does not hold up. An optimizer counts each new source image against a
+    // quota, and this app browses every paper card ever printed, so that count has no
+    // ceiling to grow toward. When the quota runs out, every card the optimizer has
+    // not already seen answers 402 and the page shows an empty frame.
+    //
+    // The local runs already took the images straight from Scryfall, for a reason that
+    // still holds: Node sends its own User-Agent, and Scryfall answers 400 to it.
+    unoptimized: true,
   },
 };
 

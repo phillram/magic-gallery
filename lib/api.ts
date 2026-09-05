@@ -321,10 +321,10 @@ function buildEdhrecUrl(card: Card): string {
   );
 }
 
-// Archidekt has no page for a single card. Its card search is the only public route, and
-// the search reads the query from "q".
+// Archidekt keys its card pages on the Scryfall id, so the link opens the printing on
+// screen rather than a search, and shows the art of that printing.
 function buildArchidektUrl(card: Card): string {
-  return `https://archidekt.com/search/cards?q=${encodeURIComponent(card.name)}`;
+  return `https://archidekt.com/card?name=${encodeURIComponent(card.name)}&uid=${card.id}`;
 }
 
 export function getExternalLinks(card: Card): ExternalLink[] {

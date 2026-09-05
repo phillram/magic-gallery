@@ -1,4 +1,4 @@
-import { fetchCardById, fetchCardPrints } from '@/lib/api';
+import { DEFAULT_PRINTS_UNIQUE, fetchCardById, fetchCardPrints } from '@/lib/api';
 import Header from '@/components/Header';
 import VersionGallery from '@/components/VersionGallery';
 import Link from 'next/link';
@@ -16,7 +16,7 @@ export default async function CardVersionsPage({ params }: CardVersionsPageProps
   }
 
   const card = lookup.card;
-  const prints = await fetchCardPrints(card);
+  const prints = await fetchCardPrints(card, 1, DEFAULT_PRINTS_UNIQUE);
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -29,12 +29,13 @@ export default async function CardVersionsPage({ params }: CardVersionsPageProps
           ← Back to {card.name}
         </Link>
         <h1 className="text-3xl font-bold text-slate-100 mb-2">All versions of {card.name}</h1>
-        <p className="text-slate-400 mb-8">Every paper printing, grouped by set, newest first.</p>
+        <p className="text-slate-400 mb-8">Paper printings, grouped by set, newest first.</p>
         <VersionGallery
           card={card}
           initialPrints={prints.cards}
           total={prints.total}
           initialHasMore={prints.hasMore}
+          initialUnique={DEFAULT_PRINTS_UNIQUE}
         />
       </div>
     </div>

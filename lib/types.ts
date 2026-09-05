@@ -6,6 +6,8 @@ export type CardFace = {
   oracle_text?: string;
   power?: string;
   toughness?: string;
+  // Double-faced cards carry an illustration id per face rather than one for the card.
+  illustration_id?: string;
   image_uris?: {
     small: string;
     normal: string;
@@ -41,6 +43,8 @@ export type Card = {
   color_identity?: string[];
   games: string[];
   artist?: string;
+  // Printings that share this share one piece of art. Absent on double-faced cards.
+  illustration_id?: string;
   collector_number?: string;
   prices?: {
     usd: string | null;

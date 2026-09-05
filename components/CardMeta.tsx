@@ -28,6 +28,9 @@ export const CARD_IMAGE_CLASSES = 'relative w-full aspect-5/7 bg-ink-900 overflo
 
 export function SetIcon({ setCode, className }: { setCode: string; className?: string }): JSX.Element {
   return (
+    // Same as the mana symbols: an SVG that next/image will not optimize. This one also
+    // arrives through a redirect, which its loader would have to follow for no gain.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={`${SET_ICON_BASE_URL}/${encodeURIComponent(setCode.toLowerCase())}`}
       alt=""

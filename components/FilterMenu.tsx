@@ -1,7 +1,18 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type JSX, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type JSX,
+  type ReactNode,
+} from 'react';
 import { cn } from '@/lib/utils';
+
+// How much of the window to leave beside a panel that had to move.
+const EDGE_GAP = 8;
 
 interface FilterMenuProps {
   label: string;
@@ -42,9 +53,42 @@ export default function FilterMenu({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
   const isActive = count > 0 || Boolean(summary);
+
+  // A panel hangs from the left edge of the button that opened it. The buttons wrap in
+  // a narrow window, and one near the right edge then opened a panel that ran off the
+  // screen with half its own inputs past the edge. Pull it back by however much it
+  // overruns, but never so far that it leaves the other side.
+  //
+  // The panel is moved by writing to it rather than by holding the offset in state:
+  // this is positioning, and nothing else on the page renders differently for it. The
+  // two measurements are a transform away from what the transform changes, so reading
+  // them again after a resize cannot compound the last move.
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const place = () => {
+      const container = containerRef.current;
+      const panel = panelRef.current;
+      if (!container || !panel) {
+        return;
+      }
+
+      const { left } = container.getBoundingClientRect();
+      const overflow = left + panel.offsetWidth - (window.innerWidth - EDGE_GAP);
+      const shift = overflow > 0 ? Math.min(overflow, Math.max(left - EDGE_GAP, 0)) : 0;
+      panel.style.transform = shift ? `translateX(-${shift}px)` : '';
+    };
+
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -105,8 +149,9 @@ export default function FilterMenu({
       {isOpen && (
         <div
           id={panelId}
+          ref={panelRef}
           className={cn(
-            'absolute left-0 z-40 mt-2 max-w-[calc(100vw-2rem)] rounded-lg border border-ink-700 bg-ink-850 p-3 shadow-2xl shadow-black/60',
+            'absolute left-0 z-40 mt-2 max-w-[calc(100vw-1rem)] rounded-lg border border-ink-700 bg-ink-850 p-3 shadow-2xl shadow-black/60',
             width
           )}
         >

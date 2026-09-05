@@ -28,6 +28,10 @@ export function ManaSymbol({
   decorative?: boolean;
 }): JSX.Element {
   return (
+    // next/image has nothing to do for these. They are SVG, which its optimizer refuses
+    // to touch unless dangerouslyAllowSVG is set, and each one is well under a kilobyte
+    // and already cached hard by Scryfall's CDN.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={symbolUrl(symbol)}
       alt={decorative ? '' : symbol}

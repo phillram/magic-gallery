@@ -173,9 +173,17 @@ export default function FilterBar({
             ref={searchRef}
             type="search"
             value={filters.search}
-            onChange={(event) =>
-              onFilterChange({ ...filters, search: event.target.value }, { replace: true })
-            }
+            // Spaces on their own are not a search. Left as typed they matched every
+            // card in the game and still put an empty chip under the bar. A term that
+            // has any other character keeps its spaces, or a name could never be typed
+            // past its first word.
+            onChange={(event) => {
+              const typed = event.target.value;
+              onFilterChange(
+                { ...filters, search: typed.trim() === '' ? '' : typed },
+                { replace: true }
+              );
+            }}
             placeholder="Search card names, such as “lightning bolt”"
             aria-label="Search card names"
             aria-keyshortcuts="/"

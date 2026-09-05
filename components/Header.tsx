@@ -1,16 +1,13 @@
 import Link from 'next/link';
 import type { JSX } from 'react';
+import { COLORS } from '@/lib/mtg';
+import { ManaSymbol } from './ManaSymbols';
 import RandomCardButton from './RandomCardButton';
 
-// The five colors in the order the mana symbols sit on a card: white, blue, black,
-// red, green. Drawn here rather than loaded, so the mark is on screen with the page.
-const MANA_PIPS = [
-  { color: 'W', className: 'bg-mana-w' },
-  { color: 'U', className: 'bg-mana-u' },
-  { color: 'B', className: 'bg-mana-b' },
-  { color: 'R', className: 'bg-mana-r' },
-  { color: 'G', className: 'bg-mana-g' },
-];
+// White, blue, black, red, green: the order the symbols sit in on a card, and the order
+// the color filter lists them in. The sixth entry of COLORS is colorless, which is the
+// absence of the other five and has no place in a mark that stands for all of them.
+const MARK_COLORS = COLORS.filter((color) => color !== 'C');
 
 export default function Header(): JSX.Element {
   return (
@@ -20,12 +17,12 @@ export default function Header(): JSX.Element {
           href="/"
           className="group flex items-center gap-3 rounded-md py-1 transition-colors hover:text-gold-300"
         >
-          <span aria-hidden="true" className="flex items-center -space-x-1">
-            {MANA_PIPS.map((pip) => (
-              <span
-                key={pip.color}
-                className={`h-3 w-3 rounded-full ring-1 ring-ink-950/60 ${pip.className}`}
-              />
+          {/* Each symbol is a sun, a drop, a skull, a fireball and a tree, and they only
+              read as those with a gap between them. The height is fixed in em, so the row
+              holds its size while the files load and the wordmark never shifts. */}
+          <span className="flex items-center gap-0.5 text-lg">
+            {MARK_COLORS.map((color) => (
+              <ManaSymbol key={color} symbol={`{${color}}`} decorative />
             ))}
           </span>
           <span className="font-display text-lg font-bold tracking-wide text-gold-200 transition-colors group-hover:text-gold-300 sm:text-xl">

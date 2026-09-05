@@ -15,13 +15,23 @@ function symbolUrl(symbol: string): string {
   return `${SYMBOL_BASE_URL}/${symbol.replace(/[{}/]/g, '')}.svg`;
 }
 
-// Sized in em so symbols follow the surrounding text.
-export function ManaSymbol({ symbol, className }: { symbol: string; className?: string }): JSX.Element {
+// Sized in em so symbols follow the surrounding text. A symbol standing in rules text
+// is content, and its braces are worth reading out and worth a tooltip. The same symbol
+// in a logo is decoration, and a row of "{W}" tooltips over a wordmark is noise.
+export function ManaSymbol({
+  symbol,
+  className,
+  decorative,
+}: {
+  symbol: string;
+  className?: string;
+  decorative?: boolean;
+}): JSX.Element {
   return (
     <img
       src={symbolUrl(symbol)}
-      alt={symbol}
-      title={symbol}
+      alt={decorative ? '' : symbol}
+      title={decorative ? undefined : symbol}
       className={cn('inline-block h-[1em] w-[1em] align-[-0.125em]', className)}
     />
   );

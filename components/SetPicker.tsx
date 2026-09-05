@@ -15,10 +15,6 @@ interface SetPickerProps {
   onToggle: (code: string) => void;
 }
 
-// There are close to a thousand paper sets. Rendering every one on an empty query
-// costs more than it helps, and a real query narrows well below this.
-const MAX_VISIBLE = 100;
-
 // Sets share long prefixes with their token and promo siblings, so a plain substring
 // match buries the one someone meant: "thb" would list Theros Beyond Death third,
 // behind its own promos and tokens. Rank the closest kind of match first and keep the
@@ -40,6 +36,7 @@ function matchRank(set: SetOption, needle: string): number {
 export default function SetPicker({ sets, selected, onToggle }: SetPickerProps): JSX.Element {
   const [query, setQuery] = useState('');
   const [highlighted, setHighlighted] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   // Match anywhere in the name or the code, so "ther" finds Aetherdrift as well as
@@ -47,14 +44,13 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) {
-      return sets.slice(0, MAX_VISIBLE);
+      return sets;
     }
 
     return sets
       .map((set) => ({ set, rank: matchRank(set, needle) }))
       .filter((entry) => entry.rank >= 0)
       .sort((a, b) => a.rank - b.rank)
-      .slice(0, MAX_VISIBLE)
       .map((entry) => entry.set);
   }, [sets, query]);
 
@@ -76,7 +72,6 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
     if (event.key === 'Enter' && matches[highlighted]) {
       event.preventDefault();
       onToggle(matches[highlighted].code);
-      setQuery('');
       return;
     }
 
@@ -88,23 +83,47 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
 
   return (
     <div>
-      <input
-        type="text"
-        role="combobox"
-        aria-expanded="true"
-        aria-controls="set-picker-list"
-        aria-autocomplete="list"
-        aria-label="Search sets"
-        placeholder="Type a set name or code"
-        value={query}
-        autoFocus
-        onChange={(event) => {
-          setQuery(event.target.value);
-          setHighlighted(0);
-        }}
-        onKeyDown={handleKeyDown}
-        className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-gold-500"
-      />
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="set-picker-list"
+          aria-autocomplete="list"
+          aria-label="Search sets"
+          placeholder="Type a set name or code"
+          value={query}
+          autoFocus
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setHighlighted(0);
+          }}
+          onKeyDown={handleKeyDown}
+          className="w-full rounded-md border border-ink-700 bg-ink-900 py-2 pl-3 pr-9 text-sm text-ink-100 placeholder:text-ink-500 focus:border-gold-500"
+        />
+
+        {query !== '' && (
+          <button
+            type="button"
+            aria-label="Clear the set search"
+            onClick={() => {
+              setQuery('');
+              setHighlighted(0);
+              inputRef.current?.focus();
+            }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-sm px-2 text-base leading-none text-ink-500 transition-colors hover:text-gold-300"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        )}
+      </div>
+
+      {matches.length > 0 && (
+        <p className="mt-2 text-xs text-ink-500">
+          Showing {matches.length} of {sets.length} sets
+        </p>
+      )}
 
       <ul
         id="set-picker-list"
@@ -119,12 +138,20 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
         )}
 
         {matches.map((set, index) => (
-          <li key={set.code} role="option" aria-selected={selected.includes(set.code)}>
+          <li
+            key={set.code}
+            role="option"
+            aria-selected={selected.includes(set.code)}
+            className="set-option"
+          >
             <button
               type="button"
               onClick={() => {
                 onToggle(set.code);
-                setQuery('');
+                // The search stays, so the next set in the same result list is one
+                // click away. Focus goes back to the box, which keeps typing, the
+                // arrow keys, and Backspace working after a click.
+                inputRef.current?.focus();
               }}
               onMouseEnter={() => setHighlighted(index)}
               className={cn(

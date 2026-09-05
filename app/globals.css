@@ -133,6 +133,17 @@
       0 1px 2px rgba(0, 0, 0, 0.6);
   }
 
+  /*
+    One row in the set picker, which lists close to a thousand sets in a box that shows
+    about seven. Skip the work for the rows nobody has scrolled to yet. Every row is
+    the same height, so the reserved size is exact and the scrollbar does not move
+    under the pointer.
+  */
+  .set-option {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 36px;
+  }
+
   /* The rules text box on a printed card: a lighter panel inside the frame. */
   .text-box {
     background: linear-gradient(180deg, var(--color-ink-800), var(--color-ink-850));

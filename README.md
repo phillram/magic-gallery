@@ -6,7 +6,7 @@
 
 [Open the app](https://magic-gallery.vercel.app/) · [Report a problem](https://github.com/phillram/magic-gallery/issues)
 
-<img src="docs/browse.jpg" alt="The card browser with the red, creature, and mythic filters on" width="900">
+<img src="docs/browse.jpg" alt="The card browser with a search for Polukranos" width="900">
 
 </div>
 
@@ -26,8 +26,8 @@ Card data comes from the [Scryfall API](https://scryfall.com/docs/api). The app 
 account, no key, and no configuration.
 
 <div align="center">
-<img src="docs/card.jpg" alt="The card page for Lightning Bolt" width="900">
-<img src="docs/versions.jpg" alt="Every paper printing of Lightning Bolt, grouped by set" width="900">
+<img src="docs/card.jpg" alt="The card page for Polukranos, Unchained" width="900">
+<img src="docs/versions.jpg" alt="Every paper printing of Polukranos, Unchained, grouped by set" width="900">
 </div>
 
 ## Run it

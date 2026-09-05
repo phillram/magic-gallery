@@ -1,23 +1,48 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:is(.dark *));
-
 /*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
+  The app has one theme: a dark, warm table under low light. The surfaces are named
+  "ink" rather than "gray" because they carry brown, not blue, and a blue gray next to
+  a card frame reads as cold.
 */
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
+@theme {
+  --font-display: var(--font-display), Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Rules text and flavor text, which are set in a serif on the printed card. */
+  --font-card: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+
+  --color-ink-950: #0b0807;
+  --color-ink-900: #13100d;
+  --color-ink-850: #191512;
+  --color-ink-800: #221c18;
+  --color-ink-750: #2a231e;
+  --color-ink-700: #362d26;
+  --color-ink-600: #4b3f35;
+  --color-ink-500: #6d5d50;
+  --color-ink-400: #9a8878;
+  --color-ink-300: #c3b5a5;
+  --color-ink-200: #e0d6c9;
+  --color-ink-100: #f4efe7;
+
+  /* The five colors, taken from the printed mana symbols. */
+  --color-mana-w: #fffbd5;
+  --color-mana-u: #aae0fa;
+  --color-mana-b: #cbc2bf;
+  --color-mana-r: #f9aa8f;
+  --color-mana-g: #9bd3ae;
+
+  /* The gold of a legendary frame. It is the one accent color in the app. */
+  --color-gold-200: #f6e6b8;
+  --color-gold-300: #eed890;
+  --color-gold-400: #dcbe66;
+  --color-gold-500: #c19a3a;
+  --color-gold-600: #96742a;
+
+  /* Rarity, in the colors the set symbols are printed in. */
+  --color-rarity-common: #b9aa9a;
+  --color-rarity-uncommon: #cfd6dc;
+  --color-rarity-rare: #dcbe66;
+  --color-rarity-mythic: #f0662f;
 }
 
 /*
@@ -26,6 +51,14 @@
   would beat utilities like `px-4` and strip the padding off the whole app.
 */
 @layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-ink-700, currentcolor);
+  }
+
   * {
     @apply m-0 p-0 box-border;
   }
@@ -35,22 +68,78 @@
   }
 
   body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-ink-950 text-ink-100 font-sans antialiased;
+    /* A faint warm glow from the top, so the page does not read as a flat black sheet. */
+    background-image: radial-gradient(
+      120rem 40rem at 50% -14rem,
+      rgba(193, 154, 58, 0.1),
+      transparent 70%
+    );
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: var(--color-gold-500);
+    color: var(--color-ink-950);
+  }
+
+  /*
+    One focus ring for the whole app. The styles before this removed the outline from
+    every input and put nothing back, which left a keyboard with no way to see where
+    it was.
+  */
+  :focus-visible {
+    outline: 2px solid var(--color-gold-400);
+    outline-offset: 2px;
   }
 
   ::-webkit-scrollbar {
-    @apply w-2 h-2;
+    @apply w-2.5 h-2.5;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-slate-900;
+    @apply bg-ink-900;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-700 rounded-full;
+    @apply bg-ink-700 rounded-full;
+    border: 2px solid var(--color-ink-900);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-600;
+    @apply bg-ink-600;
+  }
+}
+
+@layer components {
+  /*
+    The frame around a card image. A printed card sits in a black border with a thin
+    bright edge, and this is the smallest thing that reads as the same object.
+  */
+  .card-frame {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+      0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+
+  /* The rules text box on a printed card: a lighter panel inside the frame. */
+  .text-box {
+    background: linear-gradient(180deg, var(--color-ink-800), var(--color-ink-850));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+}
+
+/*
+  Movement is decoration here. A visitor who asks the system for less of it gets the
+  same layout with none of the travel.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

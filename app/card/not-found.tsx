@@ -1,19 +1,25 @@
-import Header from '@/components/Header';
 import Link from 'next/link';
+import MessagePage from '@/components/MessagePage';
+import RandomCardButton from '@/components/RandomCardButton';
 
-export default function NotFound() {
+export default function CardNotFound() {
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Header />
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center">
-        <h1 className="text-4xl font-bold text-slate-100 mb-4">Card Not Found</h1>
-        <p className="text-slate-400 mb-6">
-          The card you&apos;re looking for doesn&apos;t exist.
-        </p>
-        <Link href="/" className="text-blue-400 hover:text-blue-300">
-          ← Back to Cards
-        </Link>
-      </div>
-    </div>
+    <MessagePage
+      title="No card with that address"
+      action={
+        <>
+          <Link
+            href="/"
+            className="rounded-md border border-gold-600/60 bg-gold-500/10 px-4 py-2.5 text-sm font-semibold text-gold-200 transition-colors hover:bg-gold-500/20"
+          >
+            Search for a card
+          </Link>
+          <RandomCardButton />
+        </>
+      }
+    >
+      Scryfall has no card at this address. The link may be old, or the card id may have a typo in
+      it.
+    </MessagePage>
   );
 }

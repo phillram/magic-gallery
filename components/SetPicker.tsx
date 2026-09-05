@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { cn } from '@/lib/utils';
+import { SetIcon } from './CardMeta';
 
 interface SetOption {
   code: string;
@@ -34,11 +35,11 @@ function matchRank(set: SetOption, needle: string): number {
   return -1;
 }
 
+// The list lives inside a menu that is already open, so it does not open or close
+// itself. Everything here is about finding one set among a thousand.
 export default function SetPicker({ sets, selected, onToggle }: SetPickerProps): JSX.Element {
   const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   // Match anywhere in the name or the code, so "ther" finds Aetherdrift as well as
@@ -58,39 +59,12 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
   }, [sets, query]);
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const onPointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [isOpen]);
-
-  useEffect(() => {
     listRef.current?.children[highlighted]?.scrollIntoView({ block: 'nearest' });
   }, [highlighted]);
-
-  const open = () => {
-    setIsOpen(true);
-    setHighlighted(0);
-  };
-
-  const select = (code: string) => {
-    onToggle(code);
-    setQuery('');
-  };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
-      if (!isOpen) {
-        open();
-        return;
-      }
       if (matches.length === 0) {
         return;
       }
@@ -99,88 +73,78 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
       return;
     }
 
-    if (event.key === 'Enter' && isOpen && matches[highlighted]) {
+    if (event.key === 'Enter' && matches[highlighted]) {
       event.preventDefault();
-      select(matches[highlighted].code);
+      onToggle(matches[highlighted].code);
+      setQuery('');
       return;
     }
 
+    // Backspace on an empty box drops the set added last, the way a tag field does.
     if (event.key === 'Backspace' && query === '' && selected.length > 0) {
       onToggle(selected[selected.length - 1]);
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      setIsOpen(false);
     }
   };
 
   return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <input
-          type="text"
-          role="combobox"
-          aria-expanded={isOpen}
-          aria-controls="set-picker-list"
-          aria-autocomplete="list"
-          aria-label="Search sets"
-          placeholder={
-            selected.length > 0
-              ? `${selected.length} set${selected.length > 1 ? 's' : ''} selected`
-              : 'All sets, type to search'
-          }
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setIsOpen(true);
-            setHighlighted(0);
-          }}
-          onFocus={open}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            'w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm',
-            'focus:border-blue-500 focus:outline-hidden',
-            selected.length > 0 && !query && 'placeholder:text-slate-100'
-          )}
-        />
-      </div>
+    <div>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="set-picker-list"
+        aria-autocomplete="list"
+        aria-label="Search sets"
+        placeholder="Type a set name or code"
+        value={query}
+        autoFocus
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setHighlighted(0);
+        }}
+        onKeyDown={handleKeyDown}
+        className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-gold-500"
+      />
 
-      {isOpen && (
-        <ul
-          id="set-picker-list"
-          ref={listRef}
-          role="listbox"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-sm border border-slate-700 bg-slate-800 shadow-lg"
-        >
-          {matches.length === 0 && (
-            <li className="px-3 py-2 text-sm text-slate-400">No sets match “{query}”</li>
-          )}
+      <ul
+        id="set-picker-list"
+        ref={listRef}
+        role="listbox"
+        aria-label="Sets"
+        aria-multiselectable="true"
+        className="mt-2 max-h-64 overflow-y-auto rounded-md border border-ink-800"
+      >
+        {matches.length === 0 && (
+          <li className="px-3 py-2 text-sm text-ink-400">No set matches “{query}”</li>
+        )}
 
-          {matches.map((set, index) => (
-            <li key={set.code} role="option" aria-selected={selected.includes(set.code)}>
-              <button
-                type="button"
-                onClick={() => select(set.code)}
-                onMouseEnter={() => setHighlighted(index)}
-                className={cn(
-                  'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm',
-                  index === highlighted ? 'bg-slate-700' : 'hover:bg-slate-700',
-                  selected.includes(set.code) ? 'text-blue-300' : 'text-slate-100'
-                )}
-              >
-                <span className="truncate">
-                  <span aria-hidden="true" className="mr-1.5 inline-block w-3">
-                    {selected.includes(set.code) ? '✓' : ''}
-                  </span>
-                  {set.name}
-                </span>
-                <span className="shrink-0 font-mono text-xs uppercase text-slate-400">{set.code}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        {matches.map((set, index) => (
+          <li key={set.code} role="option" aria-selected={selected.includes(set.code)}>
+            <button
+              type="button"
+              onClick={() => {
+                onToggle(set.code);
+                setQuery('');
+              }}
+              onMouseEnter={() => setHighlighted(index)}
+              className={cn(
+                'flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm transition-colors',
+                index === highlighted ? 'bg-ink-750' : 'hover:bg-ink-750',
+                selected.includes(set.code) ? 'text-gold-200' : 'text-ink-200'
+              )}
+            >
+              <span aria-hidden="true" className="w-3.5 shrink-0 text-gold-300">
+                {selected.includes(set.code) ? '✓' : ''}
+              </span>
+              <SetIcon setCode={set.code} className="text-base" />
+              <span className="truncate">{set.name}</span>
+              <span className="ml-auto shrink-0 font-mono text-xs uppercase text-ink-500">
+                {set.code}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

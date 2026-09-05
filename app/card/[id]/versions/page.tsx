@@ -73,6 +73,7 @@ export default async function CardVersionsPage({ params, searchParams }: CardVer
         total={prints.total}
         initialHasMore={prints.hasMore}
         initialUnique={DEFAULT_PRINTS_UNIQUE}
+        initialFailed={prints.failed}
       />
     </div>
   );

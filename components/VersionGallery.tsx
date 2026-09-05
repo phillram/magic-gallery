@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 import { Card } from '@/lib/types';
 import { fetchCardPrints, PrintsUnique } from '@/lib/api';
 import { groupPrintsBySet, printArtKey, printVariantLabels } from '@/lib/prints';
@@ -48,7 +48,7 @@ function PrintTile({
         {(isCurrent || sharesArt) && (
           <span
             className={cn(
-              'absolute left-2 top-2 z-10 rounded px-2 py-0.5 text-xs font-semibold text-white',
+              'absolute left-2 top-2 z-10 rounded-sm px-2 py-0.5 text-xs font-semibold text-white',
               isCurrent ? 'bg-blue-600' : 'bg-blue-600/70'
             )}
           >
@@ -65,7 +65,7 @@ function PrintTile({
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900">
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-slate-700 to-slate-900">
             <span className="text-slate-400 text-center px-4 text-sm">No image available</span>
           </div>
         )}
@@ -192,7 +192,7 @@ export default function VersionGallery({
             checked={(pendingUnique ?? unique) === 'art'}
             disabled={isLoading}
             onChange={(event) => handleUniqueChange(event.target.checked)}
-            className="w-4 h-4 rounded bg-slate-800 border border-slate-700 checked:bg-blue-600 disabled:cursor-not-allowed"
+            className="w-4 h-4 rounded-sm bg-slate-800 border border-slate-700 checked:bg-blue-600 disabled:cursor-not-allowed"
           />
           <span className="text-sm text-slate-200">Only unique art</span>
         </label>

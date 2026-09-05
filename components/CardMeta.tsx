@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { cn } from '@/lib/utils';
 
 // Scryfall serves a set's icon under its code, the same way it serves mana symbols.
@@ -14,7 +15,7 @@ const RARITY_CLASSES: Record<string, string> = {
 
 // Magic cards are 63x88mm, and Scryfall's images keep that shape. Holding the same
 // ratio here means the art is never cropped and a card never changes size as it loads.
-export const CARD_IMAGE_CLASSES = 'relative w-full aspect-[5/7] bg-slate-900 overflow-hidden';
+export const CARD_IMAGE_CLASSES = 'relative w-full aspect-5/7 bg-slate-900 overflow-hidden';
 
 export function SetIcon({ setCode, className }: { setCode: string; className?: string }): JSX.Element {
   return (
@@ -33,7 +34,7 @@ export function RarityBadge({ rarity, className }: { rarity: string; className?:
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded border px-1.5 py-0.5 text-xs capitalize',
+        'inline-flex items-center rounded-sm border px-1.5 py-0.5 text-xs capitalize',
         RARITY_CLASSES[rarity] ?? 'border-slate-600 text-slate-400',
         className
       )}
@@ -47,7 +48,7 @@ export function VariantBadge({ label, className }: { label: string; className?: 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-300',
+        'inline-flex items-center rounded-sm bg-slate-700 px-1.5 py-0.5 text-xs text-slate-300',
         className
       )}
     >

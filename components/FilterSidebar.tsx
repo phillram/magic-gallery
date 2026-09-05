@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { FilterOptions } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { countActiveFilters } from '@/lib/analytics';
 import { EMPTY_FILTERS } from '@/lib/filter-params';
 import { ManaSymbol } from './ManaSymbols';
 import SetPicker from './SetPicker';
@@ -104,7 +103,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
         <h2 className="text-xl font-bold text-slate-100">Filters</h2>
         <button
           onClick={clearFilters}
-          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded-sm transition-colors"
         >
           Clear All
         </button>
@@ -118,7 +117,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
           placeholder="Card name..."
           value={filters.search}
           onChange={handleSearchChange}
-          className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
+          className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm focus:border-blue-500 focus:outline-hidden"
         />
       </div>
 
@@ -150,7 +149,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
               aria-label={COLOR_NAMES[color]}
               aria-pressed={filters.colors.includes(color)}
               className={cn(
-                'flex items-center justify-center rounded p-1 transition-all',
+                'flex items-center justify-center rounded-sm p-1 transition-all',
                 filters.colors.includes(color)
                   ? 'bg-slate-700 ring-2 ring-white opacity-100'
                   : 'opacity-70 hover:opacity-100'
@@ -172,7 +171,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
                 type="checkbox"
                 checked={filters.types.includes(type)}
                 onChange={() => handleTypeToggle(type)}
-                className="w-4 h-4 rounded bg-slate-800 border border-slate-700 checked:bg-blue-600"
+                className="w-4 h-4 rounded-sm bg-slate-800 border border-slate-700 checked:bg-blue-600"
               />
               <span className="text-sm text-slate-200">{type}</span>
             </label>
@@ -190,7 +189,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
                 type="checkbox"
                 checked={filters.rarities.includes(rarity)}
                 onChange={() => handleRarityToggle(rarity)}
-                className="w-4 h-4 rounded bg-slate-800 border border-slate-700 checked:bg-blue-600"
+                className="w-4 h-4 rounded-sm bg-slate-800 border border-slate-700 checked:bg-blue-600"
               />
               <span className="text-sm text-slate-200 capitalize">{rarity}</span>
             </label>
@@ -205,7 +204,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
           <button
             onClick={() => handleManaModeChange('exact')}
             className={cn(
-              'flex-1 px-2 py-1 text-xs rounded transition-colors',
+              'flex-1 px-2 py-1 text-xs rounded-sm transition-colors',
               manaMode === 'exact'
                 ? 'bg-blue-600 text-white'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -216,7 +215,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
           <button
             onClick={() => handleManaModeChange('range')}
             className={cn(
-              'flex-1 px-2 py-1 text-xs rounded transition-colors',
+              'flex-1 px-2 py-1 text-xs rounded-sm transition-colors',
               manaMode === 'range'
                 ? 'bg-blue-600 text-white'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -234,7 +233,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
             placeholder="Mana value..."
             value={filters.exactMana ?? ''}
             onChange={handleManaChange}
-            className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm focus:border-blue-500 focus:outline-hidden"
           />
         ) : (
           <div className="space-y-2">
@@ -245,7 +244,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
               placeholder="Min mana..."
               value={filters.minMana ?? ''}
               onChange={(e) => handleManaRangeChange('min', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm focus:border-blue-500 focus:outline-hidden"
             />
             <input
               type="number"
@@ -254,7 +253,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets }: FilterS
               placeholder="Max mana..."
               value={filters.maxMana ?? ''}
               onChange={(e) => handleManaRangeChange('max', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm focus:border-blue-500 focus:outline-hidden"
             />
           </div>
         )}

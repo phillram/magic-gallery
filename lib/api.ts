@@ -30,9 +30,9 @@ export async function fetchSets(): Promise<Set[]> {
   try {
     const response = await fetch(`${SCRYFALL_API_BASE}/sets`, { headers: SCRYFALL_HEADERS });
     const data = await response.json();
-    return data.data
-      .filter((set: any) => set.released_at && !set.digital)
-      .sort((a: any, b: any) => new Date(b.released_at).getTime() - new Date(a.released_at).getTime());
+    return (data.data as Set[])
+      .filter((set) => set.released_at && !set.digital)
+      .sort((a, b) => new Date(b.released_at).getTime() - new Date(a.released_at).getTime());
   } catch (error) {
     console.error('Error fetching sets:', error);
     return [];

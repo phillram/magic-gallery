@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { cn } from '@/lib/utils';
 
 const SYMBOL_BASE_URL = 'https://svgs.scryfall.io/card-symbols';

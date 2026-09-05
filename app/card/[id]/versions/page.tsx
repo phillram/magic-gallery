@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 interface CardVersionsPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function CardVersionsPage({ params }: CardVersionsPageProps) {
-  const lookup = await fetchCardById(params.id);
+  const { id } = await params;
+  const lookup = await fetchCardById(id);
 
   if (!lookup.card) {
     notFound();

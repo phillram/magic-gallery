@@ -1,7 +1,6 @@
 'use client';
 
 import { fetchRandomCard } from '@/lib/api';
-import { Card } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 

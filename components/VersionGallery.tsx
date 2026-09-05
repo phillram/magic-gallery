@@ -55,16 +55,6 @@ function PrintTile({
       )}
     >
       <div className={cn(CARD_IMAGE_CLASSES, 'card-frame')}>
-        {(isCurrent || sharesArt) && (
-          <span
-            className={cn(
-              'absolute left-2 top-2 z-10 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold',
-              isCurrent ? 'bg-gold-400 text-ink-950' : 'bg-ink-950/85 text-gold-200'
-            )}
-          >
-            {isCurrent ? 'You came from this one' : 'Same art'}
-          </span>
-        )}
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -85,6 +75,22 @@ function PrintTile({
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
+        {/* Under the card rather than over it. This sat in the top corner of the art,
+            where it covered the name and the mana cost of the one printing a visitor
+            most wants to read. */}
+        {(isCurrent || sharesArt) && (
+          <p
+            className={cn(
+              'rounded-md px-2 py-1 text-center text-[0.6875rem] font-semibold',
+              isCurrent
+                ? 'bg-gold-400 text-ink-950'
+                : 'bg-ink-850 text-gold-200 ring-1 ring-gold-600/50'
+            )}
+          >
+            {isCurrent ? 'You came from this one' : 'Same art'}
+          </p>
+        )}
+
         <div className="flex flex-wrap items-center gap-1.5">
           {print.rarity && <RarityBadge rarity={print.rarity} />}
           {variantLabels.map((label) => (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type JSX } from 'react';
 import { cn } from '@/lib/utils';
 import { SetIcon } from './CardMeta';
 
@@ -38,6 +38,13 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
   const [highlighted, setHighlighted] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+
+  // The arrow keys move a highlight down the list while the box keeps the focus, so the
+  // highlighted row has to be named for a screen reader to read it out. Each row needs
+  // an id of its own for that, and the ids belong to this picker rather than to the page.
+  const pickerId = useId();
+  const listId = `${pickerId}-list`;
+  const optionId = (code: string) => `${pickerId}-${code}`;
 
   // Match anywhere in the name or the code, so "ther" finds Aetherdrift as well as
   // Theros, and "thb" finds Theros Beyond Death by its code.
@@ -89,7 +96,8 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
           type="text"
           role="combobox"
           aria-expanded="true"
-          aria-controls="set-picker-list"
+          aria-controls={listId}
+          aria-activedescendant={matches[highlighted] ? optionId(matches[highlighted].code) : undefined}
           aria-autocomplete="list"
           aria-label="Search sets"
           placeholder="Type a set name or code"
@@ -119,14 +127,16 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
         )}
       </div>
 
-      {matches.length > 0 && (
+      {/* Only worth saying once a search has taken something out of the list. Over an
+          empty box it read "Showing 988 of 988 sets". */}
+      {query.trim() !== '' && matches.length > 0 && (
         <p className="mt-2 text-xs text-ink-500">
           Showing {matches.length} of {sets.length} sets
         </p>
       )}
 
       <ul
-        id="set-picker-list"
+        id={listId}
         ref={listRef}
         role="listbox"
         aria-label="Sets"
@@ -137,38 +147,37 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
           <li className="px-3 py-2 text-sm text-ink-400">No set matches “{query}”</li>
         )}
 
+        {/* The row is the option itself. A button inside it was a second thing to reach,
+            and an option that holds its own control is not a list a screen reader can
+            walk. The box below keeps the focus and answers every key. */}
         {matches.map((set, index) => (
           <li
             key={set.code}
+            id={optionId(set.code)}
             role="option"
             aria-selected={selected.includes(set.code)}
-            className="set-option"
+            onClick={() => {
+              onToggle(set.code);
+              // The search stays, so the next set in the same result list is one click
+              // away. Focus goes back to the box, which keeps typing, the arrow keys,
+              // and Backspace working after a click.
+              inputRef.current?.focus();
+            }}
+            onMouseEnter={() => setHighlighted(index)}
+            className={cn(
+              'set-option flex w-full cursor-pointer items-center gap-2 px-2.5 py-2 text-left text-sm transition-colors',
+              index === highlighted ? 'bg-ink-750' : 'hover:bg-ink-750',
+              selected.includes(set.code) ? 'text-gold-200' : 'text-ink-200'
+            )}
           >
-            <button
-              type="button"
-              onClick={() => {
-                onToggle(set.code);
-                // The search stays, so the next set in the same result list is one
-                // click away. Focus goes back to the box, which keeps typing, the
-                // arrow keys, and Backspace working after a click.
-                inputRef.current?.focus();
-              }}
-              onMouseEnter={() => setHighlighted(index)}
-              className={cn(
-                'flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm transition-colors',
-                index === highlighted ? 'bg-ink-750' : 'hover:bg-ink-750',
-                selected.includes(set.code) ? 'text-gold-200' : 'text-ink-200'
-              )}
-            >
-              <span aria-hidden="true" className="w-3.5 shrink-0 text-gold-300">
-                {selected.includes(set.code) ? '✓' : ''}
-              </span>
-              <SetIcon setCode={set.code} className="text-base" />
-              <span className="truncate">{set.name}</span>
-              <span className="ml-auto shrink-0 font-mono text-xs uppercase text-ink-500">
-                {set.code}
-              </span>
-            </button>
+            <span aria-hidden="true" className="w-3.5 shrink-0 text-gold-300">
+              {selected.includes(set.code) ? '✓' : ''}
+            </span>
+            <SetIcon setCode={set.code} className="text-base" />
+            <span className="truncate">{set.name}</span>
+            <span className="ml-auto shrink-0 font-mono text-xs uppercase text-ink-500">
+              {set.code}
+            </span>
           </li>
         ))}
       </ul>

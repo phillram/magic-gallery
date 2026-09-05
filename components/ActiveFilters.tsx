@@ -2,7 +2,10 @@
 
 import type { JSX } from 'react';
 import { FilterOptions } from '@/lib/types';
+import { COLOR_NAMES } from '@/lib/mtg';
+import { cn } from '@/lib/utils';
 import { ManaSymbol } from './ManaSymbols';
+import { SetIcon } from './CardMeta';
 
 interface ActiveFiltersProps {
   filters: FilterOptions;
@@ -14,16 +17,12 @@ interface Chip {
   key: string;
   label: string;
   symbol?: string;
+  setCode?: string;
+  // Scryfall sends the rarity in lower case. Nothing else on a chip does, and the text
+  // a visitor typed must stay the way they typed it.
+  capitalize?: boolean;
   remove: (filters: FilterOptions) => FilterOptions;
 }
-
-const COLOR_NAMES: Record<string, string> = {
-  W: 'White',
-  U: 'Blue',
-  B: 'Black',
-  R: 'Red',
-  G: 'Green',
-};
 
 function buildChips(filters: FilterOptions, setNames: Record<string, string>): Chip[] {
   const chips: Chip[] = [];
@@ -40,6 +39,7 @@ function buildChips(filters: FilterOptions, setNames: Record<string, string>): C
     chips.push({
       key: `set:${code}`,
       label: setNames[code] ?? code.toUpperCase(),
+      setCode: code,
       remove: (current) => ({ ...current, sets: current.sets.filter((s) => s !== code) }),
     });
   });
@@ -65,6 +65,7 @@ function buildChips(filters: FilterOptions, setNames: Record<string, string>): C
     chips.push({
       key: `rarity:${rarity}`,
       label: rarity,
+      capitalize: true,
       remove: (current) => ({ ...current, rarities: current.rarities.filter((r) => r !== rarity) }),
     });
   });
@@ -108,7 +109,7 @@ export default function ActiveFilters({
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {chips.map((chip) => (
         <button
           key={chip.key}
@@ -118,11 +119,15 @@ export default function ActiveFilters({
             onFilterChange(next);
           }}
           aria-label={`Remove filter ${chip.label}`}
-          className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-sm text-slate-200 hover:border-slate-500 hover:text-white"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-ink-700 bg-ink-850 py-1 pl-2.5 pr-2 text-sm text-ink-200 transition-colors hover:border-gold-500/60 hover:bg-ink-800 hover:text-ink-100"
         >
           {chip.symbol && <ManaSymbol symbol={chip.symbol} />}
-          <span className="capitalize">{chip.label}</span>
-          <span aria-hidden="true" className="text-slate-400">
+          {chip.setCode && <SetIcon setCode={chip.setCode} />}
+          <span className={cn(chip.capitalize && 'capitalize')}>{chip.label}</span>
+          <span
+            aria-hidden="true"
+            className="text-base leading-none text-ink-500 transition-colors group-hover:text-gold-300"
+          >
             ×
           </span>
         </button>

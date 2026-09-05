@@ -4,8 +4,15 @@ export type CardFace = {
   cmc: number;
   type_line: string;
   oracle_text?: string;
+  // The italic line under the rules text. It is not rules, so it is set apart.
+  flavor_text?: string;
   power?: string;
   toughness?: string;
+  // Planeswalkers carry loyalty and battles carry defense, where a creature carries
+  // power and toughness.
+  loyalty?: string;
+  defense?: string;
+  artist?: string;
   // Double-faced cards carry an illustration id per face rather than one for the card.
   illustration_id?: string;
   image_uris?: {
@@ -25,9 +32,12 @@ export type Card = {
   cmc: number;
   type_line: string;
   oracle_text?: string;
+  flavor_text?: string;
   mana_cost?: string;
   power?: string;
   toughness?: string;
+  loyalty?: string;
+  defense?: string;
   rarity?: string;
   set: string;
   set_name: string;
@@ -41,6 +51,10 @@ export type Card = {
   layout: string;
   keywords?: string[];
   color_identity?: string[];
+  // Format name to one of legal, not_legal, restricted, or banned.
+  legalities?: Record<string, string>;
+  // How often the card is played in Commander decks. 1 is the most played card.
+  edhrec_rank?: number;
   games: string[];
   artist?: string;
   // Printings that share this share one piece of art. Absent on double-faced cards.

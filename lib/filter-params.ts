@@ -1,3 +1,4 @@
+import { DEFAULT_SORT, SORT_OPTIONS, type SortKey } from './api';
 import { FilterOptions } from './types';
 
 export const EMPTY_FILTERS: FilterOptions = {
@@ -22,6 +23,54 @@ const KEYS = {
   minMana: 'cmcmin',
   maxMana: 'cmcmax',
 } as const;
+
+// The sort is part of what someone set up before they shared the link, so it travels
+// with the filters rather than resetting to the default on the other end.
+const SORT_KEY = 'sort';
+
+export function sortFromParams(params: URLSearchParams): SortKey {
+  const raw = params.get(SORT_KEY);
+  return SORT_OPTIONS.some((option) => option.key === raw) ? (raw as SortKey) : DEFAULT_SORT;
+}
+
+// Where the visitor was browsing when they opened a card. Card and version links carry
+// it so "back to results" lands on the same filters, sort, and search. Without it the
+// only way back to a long-built search was the browser's own back button.
+export const FROM_KEY = 'from';
+
+export function cardHref(cardId: string, from?: string): string {
+  const suffix = from ? `?${FROM_KEY}=${encodeURIComponent(from)}` : '';
+  return `/card/${cardId}${suffix}`;
+}
+
+export function versionsHref(cardId: string, from?: string): string {
+  const suffix = from ? `?${FROM_KEY}=${encodeURIComponent(from)}` : '';
+  return `/card/${cardId}/versions${suffix}`;
+}
+
+export function browseHref(from?: string): string {
+  return from ? `/?${from}` : '/';
+}
+
+// The value arrives from a URL anyone can type, so keep only what the browser itself
+// writes: the filter keys, in the shape the browser writes them.
+export function sanitizeFrom(value: string | string[] | undefined): string | undefined {
+  if (typeof value !== 'string' || value === '') {
+    return undefined;
+  }
+
+  const allowed = new Set<string>([...Object.values(KEYS), SORT_KEY]);
+  const kept = new URLSearchParams();
+
+  for (const [key, entry] of new URLSearchParams(value)) {
+    if (allowed.has(key)) {
+      kept.set(key, entry);
+    }
+  }
+
+  const query = kept.toString();
+  return query === '' ? undefined : query;
+}
 
 function readList(params: URLSearchParams, key: string): string[] {
   const raw = params.get(key);
@@ -50,7 +99,7 @@ export function filtersFromParams(params: URLSearchParams): FilterOptions {
   };
 }
 
-export function paramsFromFilters(filters: FilterOptions): URLSearchParams {
+export function paramsFromFilters(filters: FilterOptions, sort?: SortKey): URLSearchParams {
   const params = new URLSearchParams();
 
   if (filters.search) params.set(KEYS.search, filters.search);
@@ -61,6 +110,7 @@ export function paramsFromFilters(filters: FilterOptions): URLSearchParams {
   if (filters.exactMana !== null) params.set(KEYS.exactMana, String(filters.exactMana));
   if (filters.minMana !== null) params.set(KEYS.minMana, String(filters.minMana));
   if (filters.maxMana !== null) params.set(KEYS.maxMana, String(filters.maxMana));
+  if (sort && sort !== DEFAULT_SORT) params.set(SORT_KEY, sort);
 
   return params;
 }

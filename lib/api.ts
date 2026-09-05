@@ -97,11 +97,21 @@ export async function fetchSetIconUrl(setCode: string): Promise<string> {
   return setIconIndex.urls.get(setCode.toLowerCase()) ?? FALLBACK_SET_ICON_URL;
 }
 
+// A search that matched nothing and a search that never reached Scryfall both come
+// back with no cards. Only one of them means "no card matches this", so the flag is
+// what stops an outage from being reported to the visitor as an empty shelf.
+export type SearchResult = {
+  cards: Card[];
+  total: number;
+  hasMore: boolean;
+  failed: boolean;
+};
+
 export async function searchCards(
   filters: FilterOptions,
   page: number = 1,
   sort: SortKey = DEFAULT_SORT
-): Promise<{ cards: Card[]; total: number; hasMore: boolean }> {
+): Promise<SearchResult> {
   try {
     let query = 'game:paper ';
 
@@ -157,8 +167,9 @@ export async function searchCards(
     );
 
     if (!response.ok) {
+      // Scryfall answers 404 when a query matches nothing, which is a real result.
       if (response.status === 404) {
-        return { cards: [], total: 0, hasMore: false };
+        return { cards: [], total: 0, hasMore: false, failed: false };
       }
       throw new Error(`Scryfall search failed with status ${response.status}`);
     }
@@ -170,10 +181,11 @@ export async function searchCards(
       // Scryfall decides the page size and says whether another page exists, so trust
       // it rather than inferring from how many cards came back.
       hasMore: Boolean(data.has_more),
+      failed: false,
     };
   } catch (error) {
     console.error('Error searching cards:', error);
-    return { cards: [], total: 0, hasMore: false };
+    return { cards: [], total: 0, hasMore: false, failed: true };
   }
 }
 
@@ -277,14 +289,34 @@ export async function fetchRandomCard(): Promise<Card | null> {
   }
 }
 
-export function getExternalLinks(card: Card): Record<string, string> {
+// Each link says what the site answers, because a row of brand names alone makes the
+// visitor open all five to find out which one holds the rulings.
+export type ExternalLink = { name: string; url: string; hint: string };
+
+export function getExternalLinks(card: Card): ExternalLink[] {
   const cardName = encodeURIComponent(card.name);
 
-  return {
-    Scryfall: card.scryfall_uri,
-    Gatherer: `https://gatherer.wizards.com/Pages/Card/Details.aspx?name=${cardName}`,
-    TCGPlayer: `https://www.tcgplayer.com/search/all/product?productLineName=magic&q=${cardName}`,
-    EDHREC: `https://edhrec.com/cards/${card.name.toLowerCase().replace(/ /g, '-')}`,
-    Archidekt: `https://archidekt.com/cards/${card.id}`,
-  };
+  return [
+    { name: 'Scryfall', url: card.scryfall_uri, hint: 'Rulings and printings' },
+    {
+      name: 'Gatherer',
+      url: `https://gatherer.wizards.com/Pages/Card/Details.aspx?name=${cardName}`,
+      hint: 'The official card page',
+    },
+    {
+      name: 'TCGplayer',
+      url: `https://www.tcgplayer.com/search/all/product?productLineName=magic&q=${cardName}`,
+      hint: 'Buy a copy',
+    },
+    {
+      name: 'EDHREC',
+      url: `https://edhrec.com/cards/${card.name.toLowerCase().replace(/ /g, '-')}`,
+      hint: 'Commander decks and pairings',
+    },
+    {
+      name: 'Archidekt',
+      url: `https://archidekt.com/cards/${card.id}`,
+      hint: 'Add it to a deck',
+    },
+  ];
 }

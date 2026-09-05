@@ -3,15 +3,17 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card, FilterOptions, Set } from '@/lib/types';
-import { searchCards, fetchSets, SORT_OPTIONS, DEFAULT_SORT, SortKey } from '@/lib/api';
+import { searchCards, fetchSets, SortKey } from '@/lib/api';
 import { countActiveFilters } from '@/lib/analytics';
-import { filtersFromParams, paramsFromFilters } from '@/lib/filter-params';
-import { cn } from '@/lib/utils';
-import FilterSidebar from '@/components/FilterSidebar';
+import {
+  EMPTY_FILTERS,
+  filtersFromParams,
+  paramsFromFilters,
+  sortFromParams,
+} from '@/lib/filter-params';
 import ActiveFilters from '@/components/ActiveFilters';
 import CardGrid from '@/components/CardGrid';
-import Header from '@/components/Header';
-import RandomCardButton from '@/components/RandomCardButton';
+import FilterBar from '@/components/FilterBar';
 
 // Wait for a pause in the typing before searching, so a card name goes out as one
 // query instead of one query per letter.
@@ -26,11 +28,13 @@ function CardBrowser() {
   const [sets, setSets] = useState<Set[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
+  const [hasFailed, setHasFailed] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCards, setTotalCards] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [sort, setSort] = useState<SortKey>(DEFAULT_SORT);
-  const [showFilters, setShowFilters] = useState(false);
+  // Bumped by the "Try again" button. It is a dependency of the search, so changing it
+  // is what runs the same query a second time.
+  const [retryCount, setRetryCount] = useState(0);
 
   // Each change of the filters or the sort starts a new generation of results. Requests
   // can overlap now that the controls stay live, and the slower of two would otherwise
@@ -44,19 +48,31 @@ function CardBrowser() {
   const [filters, setLocalFilters] = useState<FilterOptions>(() =>
     filtersFromParams(new URLSearchParams(paramString))
   );
+  const [sort, setLocalSort] = useState<SortKey>(() =>
+    sortFromParams(new URLSearchParams(paramString))
+  );
+
+  const writeUrl = (nextFilters: FilterOptions, nextSort: SortKey, replace?: boolean) => {
+    const query = paramsFromFilters(nextFilters, nextSort).toString();
+    const href = query ? `${pathname}?${query}` : pathname;
+
+    if (replace) {
+      router.replace(href, { scroll: false });
+    } else {
+      router.push(href, { scroll: false });
+    }
+  };
 
   // Discrete changes push, so back steps through them. Typing replaces, because one
   // history entry per keystroke would make back useless.
   const setFilters = (next: FilterOptions, options?: { replace?: boolean }) => {
     setLocalFilters(next);
-    const query = paramsFromFilters(next).toString();
-    const href = query ? `${pathname}?${query}` : pathname;
+    writeUrl(next, sort, options?.replace);
+  };
 
-    if (options?.replace) {
-      router.replace(href, { scroll: false });
-    } else {
-      router.push(href, { scroll: false });
-    }
+  const setSort = (next: SortKey) => {
+    setLocalSort(next);
+    writeUrl(filters, next);
   };
 
   // Only back and forward should pull state out of the URL. Watching the query string
@@ -65,7 +81,9 @@ function CardBrowser() {
   // this fires for real navigation and nothing else.
   useEffect(() => {
     const onPopState = () => {
-      setLocalFilters(filtersFromParams(new URLSearchParams(window.location.search)));
+      const params = new URLSearchParams(window.location.search);
+      setLocalFilters(filtersFromParams(params));
+      setLocalSort(sortFromParams(params));
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -82,7 +100,12 @@ function CardBrowser() {
     [sets]
   );
 
-  // Load sets on mount
+  // What the card pages need to offer a way back to this exact set of results.
+  const browseQuery = useMemo(
+    () => paramsFromFilters(filters, sort).toString() || undefined,
+    [filters, sort]
+  );
+
   useEffect(() => {
     const loadSets = async () => {
       const data = await fetchSets();
@@ -91,7 +114,6 @@ function CardBrowser() {
     loadSets();
   }, []);
 
-  // Load initial cards
   useEffect(() => {
     // Announce the wait before the debounce rather than after it, so the results read
     // as "more are coming" instead of briefly claiming there are none. The filters stay
@@ -106,14 +128,15 @@ function CardBrowser() {
     const loadCards = async () => {
       setIsLoading(true);
       try {
-        const { cards: newCards, total, hasMore: moreAvailable } = await searchCards(filters, 1, sort);
+        const result = await searchCards(filters, 1, sort);
         if (generation !== searchGeneration.current) {
           return;
         }
-        setCards(newCards);
-        setTotalCards(total);
+        setCards(result.cards);
+        setTotalCards(result.total);
         setCurrentPage(1);
-        setHasMore(moreAvailable);
+        setHasMore(result.hasMore);
+        setHasFailed(result.failed);
       } finally {
         if (generation === searchGeneration.current) {
           setIsLoading(false);
@@ -125,21 +148,21 @@ function CardBrowser() {
     const timer = setTimeout(loadCards, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [filters, sort]);
+  }, [filters, sort, retryCount]);
 
   const handleLoadMore = async () => {
     const generation = searchGeneration.current;
     setIsLoading(true);
     try {
       const nextPage = currentPage + 1;
-      const { cards: newCards, hasMore: moreAvailable } = await searchCards(filters, nextPage, sort);
+      const result = await searchCards(filters, nextPage, sort);
       if (generation !== searchGeneration.current) {
         return;
       }
-      setCards([...cards, ...newCards]);
+      setCards([...cards, ...result.cards]);
       setCurrentPage(nextPage);
-      setHasMore(moreAvailable);
-
+      setHasMore(result.hasMore);
+      setHasFailed(result.failed);
     } finally {
       if (generation === searchGeneration.current) {
         setIsLoading(false);
@@ -147,81 +170,50 @@ function CardBrowser() {
     }
   };
 
+  const shownCount = Math.min(cards.length, totalCards);
+
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Header />
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Top Action Bar */}
-        <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
-          <h1 className="text-3xl font-bold text-slate-100">Card Browser</h1>
-          <div className="flex items-center gap-3">
-            {/* Below the sidebar breakpoint the filters are collapsed, so the results
-                are the first thing on the page instead of the last. */}
-            <button
-              type="button"
-              onClick={() => setShowFilters((shown) => !shown)}
-              aria-expanded={showFilters}
-              aria-controls="filter-sidebar"
-              className="lg:hidden px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-lg font-semibold transition-colors"
-            >
-              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-            </button>
-            <RandomCardButton />
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div
-            id="filter-sidebar"
-            className={cn(
-              'lg:col-span-1 lg:block lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)]',
-              showFilters ? 'block' : 'hidden'
-            )}
-          >
-            <FilterSidebar
-              filters={filters}
-              onFilterChange={setFilters}
-              sets={sets}
-            />
-          </div>
-
-          {/* Cards Grid */}
-          <div className="lg:col-span-3">
-            <ActiveFilters filters={filters} setNames={setNames} onFilterChange={setFilters} />
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-slate-400">
-                {isBusy ? 'Loading...' : `${Math.min(cards.length, totalCards)} of ${totalCards} cards`}
-              </p>
-              <label className="flex items-center gap-2 text-sm text-slate-400">
-                Sort by
-                <select
-                  value={sort}
-                  onChange={(e) => {
-                    const nextSort = e.target.value as SortKey;
-                    setSort(nextSort);
-                  }}
-                  className="px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm focus:border-blue-500 focus:outline-hidden"
-                >
-                  {SORT_OPTIONS.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <CardGrid
-              cards={cards}
-              isLoading={isBusy}
-              onLoadMore={handleLoadMore}
-              hasMore={hasMore}
-            />
-          </div>
-        </div>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="font-display text-3xl font-bold text-ink-100 sm:text-4xl">Card browser</h1>
+        <p className="mt-1 text-ink-400">
+          Every paper Magic card, from Alpha to the newest set.
+        </p>
       </div>
+
+      <FilterBar
+        filters={filters}
+        onFilterChange={setFilters}
+        sets={sets}
+        sort={sort}
+        onSortChange={setSort}
+      />
+
+      {activeFilterCount > 0 && (
+        <ActiveFilters filters={filters} setNames={setNames} onFilterChange={setFilters} />
+      )}
+
+      {/* The count is the answer to what the filters just did, so a screen reader
+          hears it change rather than having to go looking for it. */}
+      <p aria-live="polite" className="text-sm text-ink-400">
+        {isBusy
+          ? 'Searching…'
+          : totalCards === 0
+            ? 'No cards'
+            : `Showing ${shownCount.toLocaleString('en-US')} of ${totalCards.toLocaleString('en-US')} cards`}
+      </p>
+
+      <CardGrid
+        cards={cards}
+        isLoading={isBusy}
+        onLoadMore={handleLoadMore}
+        hasMore={hasMore}
+        failed={hasFailed}
+        onRetry={() => setRetryCount((count) => count + 1)}
+        onClearFilters={() => setFilters(EMPTY_FILTERS)}
+        hasFilters={activeFilterCount > 0}
+        from={browseQuery}
+      />
     </div>
   );
 }

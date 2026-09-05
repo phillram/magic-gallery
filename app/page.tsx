@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Card, FilterOptions, Set } from '@/lib/types';
+import { Card, FilterOptions, SetOption } from '@/lib/types';
 import { searchCards, fetchSets, SortKey } from '@/lib/api';
 import { appendNewCards } from '@/lib/cards';
 import { countActiveFilters } from '@/lib/analytics';
@@ -26,7 +26,7 @@ function CardBrowser() {
   const searchParams = useSearchParams();
 
   const [cards, setCards] = useState<Card[]>([]);
-  const [sets, setSets] = useState<Set[]>([]);
+  const [sets, setSets] = useState<SetOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [hasFailed, setHasFailed] = useState(false);

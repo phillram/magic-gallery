@@ -1,4 +1,4 @@
-import { Card, Set, FilterOptions } from './types';
+import { Card, Set, SetOption, FilterOptions } from './types';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
@@ -26,13 +26,47 @@ const SCRYFALL_HEADERS = {
   Accept: 'application/json',
 };
 
-export async function fetchSets(): Promise<Set[]> {
+// Scryfall answers /sets with every field it holds on all thousand of them, which is
+// most of a megabyte. Both the picker and the icon index want a few bytes of that, so
+// the list is read once on the server and each side takes the part it needs.
+export const SET_LIST_TTL_SECONDS = 24 * 60 * 60;
+
+// Server side only: the raw set list, held by Next for a day so a thousand visitors
+// cost Scryfall one request rather than a thousand.
+async function loadScryfallSets(): Promise<Set[]> {
+  const response = await fetch(`${SCRYFALL_API_BASE}/sets`, {
+    headers: SCRYFALL_HEADERS,
+    next: { revalidate: SET_LIST_TTL_SECONDS },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Scryfall set list failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  return (data.data ?? []) as Set[];
+}
+
+// What the set picker and the filter chips need, and nothing else. Newest first, and
+// digital-only sets left out, because the app shows paper cards.
+export async function fetchSetOptions(): Promise<SetOption[]> {
+  const sets = await loadScryfallSets();
+  return sets
+    .filter((set) => set.released_at && !set.digital)
+    .sort((a, b) => new Date(b.released_at).getTime() - new Date(a.released_at).getTime())
+    .map((set) => ({ code: set.code, name: set.name }));
+}
+
+// The browser reads the short list from this app, not the long one from Scryfall. It
+// is a fraction of the bytes, and it carries a cache header, so coming back to the
+// browser costs nothing at all.
+export async function fetchSets(): Promise<SetOption[]> {
   try {
-    const response = await fetch(`${SCRYFALL_API_BASE}/sets`, { headers: SCRYFALL_HEADERS });
-    const data = await response.json();
-    return (data.data as Set[])
-      .filter((set) => set.released_at && !set.digital)
-      .sort((a, b) => new Date(b.released_at).getTime() - new Date(a.released_at).getTime());
+    const response = await fetch('/api/sets');
+    if (!response.ok) {
+      throw new Error(`Set list failed with status ${response.status}`);
+    }
+    return (await response.json()) as SetOption[];
   } catch (error) {
     console.error('Error fetching sets:', error);
     return [];
@@ -43,7 +77,7 @@ export async function fetchSets(): Promise<Set[]> {
 // Theros Beyond Death Promos (pthb) uses thb.svg, Secret Lair Drop uses star.svg. A
 // code cannot be guessed into a URL, and a guess that misses 404s into a broken image,
 // so the set list is the only thing that says which file a set actually uses.
-const SET_ICON_INDEX_TTL_MS = 24 * 60 * 60 * 1000;
+const SET_ICON_INDEX_TTL_MS = SET_LIST_TTL_SECONDS * 1000;
 
 // An index we failed to load is retried sooner, so an unreachable Scryfall costs one
 // day of generic icons only if it stays unreachable for a day.
@@ -60,19 +94,9 @@ let setIconIndexRequest: Promise<SetIconIndex> | null = null;
 
 async function loadSetIconIndex(): Promise<SetIconIndex> {
   try {
-    const response = await fetch(`${SCRYFALL_API_BASE}/sets`, {
-      headers: SCRYFALL_HEADERS,
-      next: { revalidate: SET_ICON_INDEX_TTL_MS / 1000 },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Scryfall set list failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
     const urls = new Map<string, string>();
 
-    for (const set of data.data ?? []) {
+    for (const set of await loadScryfallSets()) {
       if (set.code && set.icon_svg_uri) {
         urls.set(String(set.code).toLowerCase(), set.icon_svg_uri);
       }
@@ -189,6 +213,13 @@ export async function searchCards(
   }
 }
 
+// How long a card answer is held on the server. Without it, every view of a card page
+// reads that card from Scryfall again, however many people ask for the same card. The
+// rules text of a printed card never changes, and Scryfall moves its prices about once
+// a day, so an hour keeps the page close to the price it shows. Scryfall asks callers
+// to cache what they can.
+const CARD_TTL_SECONDS = 60 * 60;
+
 // Every printing of a card shares one oracle id, so that is what gathers a card's
 // other versions. Reversible cards carry no oracle id, and an exact name match is the
 // closest stand-in there. The game:paper filter matches the browser on the home page,
@@ -216,7 +247,7 @@ export async function fetchCardPrints(
     const response = await fetch(
       `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(printsQuery(card))}` +
         `&unique=${unique}&order=released&dir=desc&page=${page}`,
-      { headers: SCRYFALL_HEADERS }
+      { headers: SCRYFALL_HEADERS, next: { revalidate: CARD_TTL_SECONDS } }
     );
 
     if (!response.ok) {
@@ -248,7 +279,10 @@ export type CardLookup =
 
 export async function fetchCardById(id: string): Promise<CardLookup> {
   try {
-    const response = await fetch(`${SCRYFALL_API_BASE}/cards/${id}`, { headers: SCRYFALL_HEADERS });
+    const response = await fetch(`${SCRYFALL_API_BASE}/cards/${id}`, {
+      headers: SCRYFALL_HEADERS,
+      next: { revalidate: CARD_TTL_SECONDS },
+    });
 
     if (response.status === 404) {
       return { card: null, reason: 'not_found' };
@@ -276,6 +310,8 @@ export async function fetchRandomCard(): Promise<Card | null> {
   try {
     const response = await fetch(`${SCRYFALL_API_BASE}/cards/random?q=game:paper`, {
       headers: SCRYFALL_HEADERS,
+      // The one request here that must never be answered twice with the same card.
+      cache: 'no-store',
     });
     if (!response.ok) {
       const message = `Scryfall random card failed with status ${response.status}`;

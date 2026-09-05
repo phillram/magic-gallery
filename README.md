@@ -56,7 +56,7 @@ renders or from the browser while you filter.
 ```text
 app/         The three routes: the browser, a card, and that card's printings
 components/  The interface: the filter bar, the grids, the card detail, the symbols
-lib/         Scryfall calls, types, URL filter helpers, and print grouping
+lib/         Scryfall calls, types, URL and search helpers, dates, print grouping
 ```
 
 ---

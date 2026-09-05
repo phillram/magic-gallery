@@ -5,7 +5,6 @@ const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
 // Scryfall sorts server side, so every option here is one it already supports.
 export const SORT_OPTIONS = [
-  { key: 'edhrec_asc', label: 'Most played in Commander', order: 'edhrec', dir: 'asc' },
   { key: 'released_desc', label: 'Newest first', order: 'released', dir: 'desc' },
   { key: 'released_asc', label: 'Oldest first', order: 'released', dir: 'asc' },
   { key: 'name_asc', label: 'Name, A to Z', order: 'name', dir: 'asc' },
@@ -13,16 +12,12 @@ export const SORT_OPTIONS = [
   { key: 'cmc_desc', label: 'Mana value, high to low', order: 'cmc', dir: 'desc' },
   { key: 'rarity_desc', label: 'Rarity, high to low', order: 'rarity', dir: 'desc' },
   { key: 'usd_desc', label: 'Price, high to low', order: 'usd', dir: 'desc' },
+  { key: 'edhrec_asc', label: 'Most played in Commander', order: 'edhrec', dir: 'asc' },
 ] as const;
 
 export type SortKey = (typeof SORT_OPTIONS)[number]['key'];
 
-// How often a card is played in Commander, which is the closest thing Scryfall holds to
-// "cards a player knows". The newest set came first before this, so a first visit opened
-// on the five basic lands of whatever had just come out. It reads as relevance on a name
-// search too: "bolt" now opens on Lightning Bolt rather than on the newest card with
-// bolt in its name.
-export const DEFAULT_SORT: SortKey = 'edhrec_asc';
+export const DEFAULT_SORT: SortKey = 'released_desc';
 
 // Scryfall rejects requests that send an HTTP library's default User-Agent, which is
 // what server-side rendering does. Browsers drop the User-Agent header and send their

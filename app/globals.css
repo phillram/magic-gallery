@@ -115,8 +115,19 @@
   /*
     The frame around a card image. A printed card sits in a black border with a thin
     bright edge, and this is the smallest thing that reads as the same object.
+
+    The corners are cut to the shape of the card in the image. Scryfall serves the art
+    as JPEG, which holds no transparency, so it fills the four corners outside the
+    rounded card with white. Without this cut those white wedges show against the dark
+    page.
+
+    The radius is a percentage, because the corner of a printed card scales with the
+    card and a fixed radius only fits one tile width. 5% of the width is the 3mm corner
+    of a 63mm card, and the second value holds that same radius on the taller side. The
+    cut is a little wider than the white in the image, so it stays clean at every size.
   */
   .card-frame {
+    border-radius: 5% / 3.6%;
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.07),
       0 1px 2px rgba(0, 0, 0, 0.6);

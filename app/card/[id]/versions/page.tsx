@@ -55,7 +55,7 @@ export default async function CardVersionsPage({ params, searchParams }: CardVer
             alt=""
             width={146}
             height={204}
-            className="card-frame hidden w-20 rounded-lg sm:block"
+            className="card-frame hidden w-20 sm:block"
           />
         )}
         <div>

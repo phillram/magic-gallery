@@ -37,6 +37,10 @@ export function SetIcon({ setCode, className }: { setCode: string; className?: s
       src={`${SET_ICON_BASE_URL}/${encodeURIComponent(setCode.toLowerCase())}`}
       alt=""
       aria-hidden="true"
+      // The set picker lists every paper set, so an eager icon there is a thousand
+      // redirects for the twelve rows a person can see. An icon already on screen
+      // still loads at once.
+      loading="lazy"
       // Set icons are solid black, which is invisible here, so invert them to read
       // as light on the dark background.
       className={cn('inline-block h-[1em] w-[1em] shrink-0 invert opacity-75', className)}

@@ -12,7 +12,6 @@ interface FilterSidebarProps {
   filters: FilterOptions;
   onFilterChange: (filters: FilterOptions, options?: { replace?: boolean }) => void;
   sets: Array<{ code: string; name: string }>;
-  isLoading: boolean;
 }
 
 const CARD_TYPES = ['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land', 'Planeswalker'];
@@ -25,7 +24,11 @@ const COLOR_NAMES: Record<string, string> = {
   R: 'Red',
   G: 'Green',
 };
-export default function FilterSidebar({ filters, onFilterChange, sets, isLoading }: FilterSidebarProps) {
+
+// No control here locks while the results load. A field that disables itself on the
+// first letter drops the focus and ends the entry after one character, so the results
+// area carries the loading state instead.
+export default function FilterSidebar({ filters, onFilterChange, sets }: FilterSidebarProps) {
   // Only the mode is the sidebar's own business. A link that arrives with a range
   // already set should open showing the range inputs.
   const [manaMode, setManaMode] = useState<'exact' | 'range'>(
@@ -115,8 +118,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
           placeholder="Card name..."
           value={filters.search}
           onChange={handleSearchChange}
-          disabled={isLoading}
-          className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none disabled:opacity-50"
+          className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
         />
       </div>
 
@@ -126,7 +128,6 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
         <SetPicker
           sets={sets}
           selected={filters.sets}
-          disabled={isLoading}
           onToggle={(code) => {
             const newSets = filters.sets.includes(code)
               ? filters.sets.filter((s) => s !== code)
@@ -145,7 +146,6 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
             <button
               key={color}
               onClick={() => handleColorToggle(color)}
-              disabled={isLoading}
               title={COLOR_NAMES[color]}
               aria-label={COLOR_NAMES[color]}
               aria-pressed={filters.colors.includes(color)}
@@ -153,8 +153,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
                 'flex items-center justify-center rounded p-1 transition-all',
                 filters.colors.includes(color)
                   ? 'bg-slate-700 ring-2 ring-white opacity-100'
-                  : 'opacity-70 hover:opacity-100',
-                'disabled:opacity-40'
+                  : 'opacity-70 hover:opacity-100'
               )}
             >
               <ManaSymbol symbol={`{${color}}`} className="h-7 w-7" />
@@ -173,8 +172,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
                 type="checkbox"
                 checked={filters.types.includes(type)}
                 onChange={() => handleTypeToggle(type)}
-                disabled={isLoading}
-                className="w-4 h-4 rounded bg-slate-800 border border-slate-700 checked:bg-blue-600 disabled:opacity-50"
+                className="w-4 h-4 rounded bg-slate-800 border border-slate-700 checked:bg-blue-600"
               />
               <span className="text-sm text-slate-200">{type}</span>
             </label>
@@ -192,8 +190,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
                 type="checkbox"
                 checked={filters.rarities.includes(rarity)}
                 onChange={() => handleRarityToggle(rarity)}
-                disabled={isLoading}
-                className="w-4 h-4 rounded bg-slate-800 border border-slate-700 checked:bg-blue-600 disabled:opacity-50"
+                className="w-4 h-4 rounded bg-slate-800 border border-slate-700 checked:bg-blue-600"
               />
               <span className="text-sm text-slate-200 capitalize">{rarity}</span>
             </label>
@@ -237,8 +234,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
             placeholder="Mana value..."
             value={filters.exactMana ?? ''}
             onChange={handleManaChange}
-            disabled={isLoading}
-            className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none disabled:opacity-50"
+            className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
           />
         ) : (
           <div className="space-y-2">
@@ -249,8 +245,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
               placeholder="Min mana..."
               value={filters.minMana ?? ''}
               onChange={(e) => handleManaRangeChange('min', e.target.value)}
-              disabled={isLoading}
-              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none disabled:opacity-50"
+              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
             />
             <input
               type="number"
@@ -259,8 +254,7 @@ export default function FilterSidebar({ filters, onFilterChange, sets, isLoading
               placeholder="Max mana..."
               value={filters.maxMana ?? ''}
               onChange={(e) => handleManaRangeChange('max', e.target.value)}
-              disabled={isLoading}
-              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none disabled:opacity-50"
+              className="w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
             />
           </div>
         )}

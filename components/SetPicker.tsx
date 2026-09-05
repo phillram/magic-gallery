@@ -12,7 +12,6 @@ interface SetPickerProps {
   sets: SetOption[];
   selected: string[];
   onToggle: (code: string) => void;
-  disabled?: boolean;
 }
 
 // There are close to a thousand paper sets. Rendering every one on an empty query
@@ -35,7 +34,7 @@ function matchRank(set: SetOption, needle: string): number {
   return -1;
 }
 
-export default function SetPicker({ sets, selected, onToggle, disabled }: SetPickerProps): JSX.Element {
+export default function SetPicker({ sets, selected, onToggle }: SetPickerProps): JSX.Element {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -132,7 +131,6 @@ export default function SetPicker({ sets, selected, onToggle, disabled }: SetPic
               : 'All sets, type to search'
           }
           value={query}
-          disabled={disabled}
           onChange={(event) => {
             setQuery(event.target.value);
             setIsOpen(true);
@@ -142,7 +140,7 @@ export default function SetPicker({ sets, selected, onToggle, disabled }: SetPic
           onKeyDown={handleKeyDown}
           className={cn(
             'w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded',
-            'focus:border-blue-500 focus:outline-none disabled:opacity-50',
+            'focus:border-blue-500 focus:outline-none',
             selected.length > 0 && !query && 'placeholder:text-slate-100'
           )}
         />

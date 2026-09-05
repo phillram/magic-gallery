@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card, FilterOptions, SetOption } from '@/lib/types';
 import { searchCards, fetchSets, SortKey } from '@/lib/api';
+import { readBrowseResults, writeBrowseResults } from '@/lib/browse-cache';
 import { appendNewCards } from '@/lib/cards';
 import { countActiveFilters } from '@/lib/analytics';
 import {
@@ -25,23 +26,6 @@ function CardBrowser() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [cards, setCards] = useState<Card[]>([]);
-  const [sets, setSets] = useState<SetOption[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSearchPending, setIsSearchPending] = useState(false);
-  const [hasFailed, setHasFailed] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCards, setTotalCards] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  // Bumped by the "Try again" button. It is a dependency of the search, so changing it
-  // is what runs the same query a second time.
-  const [retryCount, setRetryCount] = useState(0);
-
-  // Each change of the filters or the sort starts a new generation of results. Requests
-  // can overlap now that the controls stay live, and the slower of two would otherwise
-  // land last and show cards for a query nobody is looking at.
-  const searchGeneration = useRef(0);
-
   // Filters are held here and mirrored into the query string, rather than read back
   // out of it. Writing the URL is asynchronous, so deriving the filters from it made
   // two quick clicks race: the second read the state from before the first landed.
@@ -52,6 +36,28 @@ function CardBrowser() {
   const [sort, setLocalSort] = useState<SortKey>(() =>
     sortFromParams(new URLSearchParams(paramString))
   );
+
+  // What this tab already holds for the query in the address, if the visitor is coming
+  // back to it. The cards go into state before the first paint, so the grid arrives
+  // whole and the browser has the height it needs to put the scroll back.
+  const [restored] = useState(() => readBrowseResults(paramsFromFilters(filters, sort).toString()));
+
+  const [cards, setCards] = useState<Card[]>(restored?.cards ?? []);
+  const [sets, setSets] = useState<SetOption[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSearchPending, setIsSearchPending] = useState(false);
+  const [hasFailed, setHasFailed] = useState(false);
+  const [currentPage, setCurrentPage] = useState(restored?.page ?? 1);
+  const [totalCards, setTotalCards] = useState(restored?.total ?? 0);
+  const [hasMore, setHasMore] = useState(restored?.hasMore ?? false);
+  // Bumped by the "Try again" button. It is a dependency of the search, so changing it
+  // is what runs the same query a second time.
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Each change of the filters or the sort starts a new generation of results. Requests
+  // can overlap now that the controls stay live, and the slower of two would otherwise
+  // land last and show cards for a query nobody is looking at.
+  const searchGeneration = useRef(0);
 
   const writeUrl = (nextFilters: FilterOptions, nextSort: SortKey, replace?: boolean) => {
     const query = paramsFromFilters(nextFilters, nextSort).toString();
@@ -121,15 +127,28 @@ function CardBrowser() {
   // control.
   const lastSearch = useRef(filters.search);
 
+  // Only the search that runs on arrival can be the restored one. Every later run
+  // follows a filter, a sort, or a retry, and each of those wants fresh cards.
+  const skipFirstSearch = useRef(restored !== undefined);
+
   useEffect(() => {
     const isTyping = filters.search !== lastSearch.current;
     lastSearch.current = filters.search;
+
+    const query = paramsFromFilters(filters, sort).toString();
+
+    // The cards are already on screen, put back from this tab's cache while the state
+    // was built. Reading page one over them is what used to throw away every page the
+    // visitor had asked for.
+    if (skipFirstSearch.current) {
+      skipFirstSearch.current = false;
+      return;
+    }
 
     // Announce the wait before the debounce rather than after it, so the results read
     // as "more are coming" instead of briefly claiming there are none. The filters stay
     // usable through it: a control that locks under the hand costs more than a stray
     // request, and a superseded request is dropped below.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the wait has to be announced before the debounce, not after
     setIsSearchPending(true);
 
     searchGeneration.current += 1;
@@ -147,6 +166,16 @@ function CardBrowser() {
         setCurrentPage(1);
         setHasMore(result.hasMore);
         setHasFailed(result.failed);
+
+        // A refused search has nothing worth coming back to.
+        if (!result.failed) {
+          writeBrowseResults(query, {
+            cards: result.cards,
+            page: 1,
+            total: result.total,
+            hasMore: result.hasMore,
+          });
+        }
       } finally {
         if (generation === searchGeneration.current) {
           setIsLoading(false);
@@ -181,10 +210,21 @@ function CardBrowser() {
         return;
       }
 
-      setCards((current) => appendNewCards(current, result.cards));
+      // The button is dead while a page is in flight, so no second call can be building
+      // its own list out of the same starting point.
+      const grown = appendNewCards(cards, result.cards);
+      setCards(grown);
       setCurrentPage(nextPage);
       setHasMore(result.hasMore);
       setHasFailed(false);
+
+      // Every page the visitor asked for, so the whole grid comes back with them.
+      writeBrowseResults(paramsFromFilters(filters, sort).toString(), {
+        cards: grown,
+        page: nextPage,
+        total: totalCards,
+        hasMore: result.hasMore,
+      });
     } finally {
       if (generation === searchGeneration.current) {
         setIsLoading(false);

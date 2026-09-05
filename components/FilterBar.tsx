@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, type JSX } from 'react';
+import React, { useEffect, useRef, useState, type JSX } from 'react';
 import { FilterOptions } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { EMPTY_FILTERS } from '@/lib/filter-params';
@@ -36,6 +36,10 @@ const RARITIES = ['common', 'uncommon', 'rare', 'mythic'];
 // still typable.
 const QUICK_MANA_VALUES = [0, 1, 2, 3, 4, 5, 6];
 
+// Gleemax costs sixteen and is the most expensive card printed on paper. The few above
+// it are all in un-sets, so this leaves room and still rejects a typo.
+const MAX_MANA_VALUE = 20;
+
 function SearchIcon(): JSX.Element {
   return (
     <svg
@@ -60,11 +64,51 @@ export default function FilterBar({
   sort,
   onSortChange,
 }: FilterBarProps): JSX.Element {
-  // Only the mode is the bar's own business. A link that arrives with a range already
-  // set should open showing the range inputs.
-  const [manaMode, setManaMode] = useState<'exact' | 'range'>(
-    filters.minMana !== null || filters.maxMana !== null ? 'range' : 'exact'
-  );
+  // The mode follows the filters rather than being held apart from them, so a shared
+  // link and a back step both open on the inputs that hold the values. Read once at
+  // mount it went stale: the summary said "1–3" over an empty exact box.
+  const [manaModePick, setManaModePick] = useState<'exact' | 'range' | null>(null);
+  const hasRange = filters.minMana !== null || filters.maxMana !== null;
+  const manaMode: 'exact' | 'range' = hasRange
+    ? 'range'
+    : filters.exactMana !== null
+      ? 'exact'
+      : // Neither field says anything, so the mode is whichever the visitor last asked
+        // for, and Exact until they ask.
+        (manaModePick ?? 'exact');
+
+  // Searching by name is what most visits are, and the box is above a grid the visitor
+  // has usually scrolled away from. "/" is what a search-first page is expected to
+  // answer to, and it saves the scroll back up.
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      // A visitor already typing somewhere means the slash is theirs, not ours.
+      const active = document.activeElement;
+      const isTypingElsewhere =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        (active instanceof HTMLElement && active.isContentEditable);
+
+      if (isTypingElsewhere) {
+        return;
+      }
+
+      // Without this the slash lands in the box it just focused.
+      event.preventDefault();
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const toggleIn = (key: 'colors' | 'types' | 'rarities', value: string) => {
     const current = filters[key];
@@ -78,7 +122,7 @@ export default function FilterBar({
   // a range. Leaving the old mode's values behind made the newly shown inputs do
   // nothing, so drop them when the mode changes.
   const handleManaModeChange = (mode: 'exact' | 'range') => {
-    setManaMode(mode);
+    setManaModePick(mode);
     onFilterChange(
       mode === 'exact'
         ? { ...filters, minMana: null, maxMana: null }
@@ -86,13 +130,22 @@ export default function FilterBar({
     );
   };
 
+  // The min and max attributes only bind the spinner arrows, so a typed "-5" or "999"
+  // reaches the query and comes back with nothing to show for it. No card costs more
+  // than MAX_MANA_VALUE, so clamping keeps every entry on a value that can match.
   const readNumber = (value: string): number | null => {
     if (value === '') {
       return null;
     }
     const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? null : parsed;
+    if (Number.isNaN(parsed)) {
+      return null;
+    }
+    return Math.min(Math.max(parsed, 0), MAX_MANA_VALUE);
   };
+
+  const isRangeBackwards =
+    filters.minMana !== null && filters.maxMana !== null && filters.minMana > filters.maxMana;
 
   const manaSummary =
     filters.exactMana !== null
@@ -117,6 +170,7 @@ export default function FilterBar({
             <SearchIcon />
           </span>
           <input
+            ref={searchRef}
             type="search"
             value={filters.search}
             onChange={(event) =>
@@ -124,8 +178,19 @@ export default function FilterBar({
             }
             placeholder="Search card names, such as “lightning bolt”"
             aria-label="Search card names"
-            className="w-full rounded-lg border border-ink-700 bg-ink-950 py-2.5 pl-10 pr-3 text-ink-100 placeholder:text-ink-500 focus:border-gold-500"
+            aria-keyshortcuts="/"
+            className="w-full rounded-lg border border-ink-700 bg-ink-950 py-2.5 pl-10 pr-11 text-ink-100 placeholder:text-ink-500 focus:border-gold-500"
           />
+          {/* The shortcut is only worth having if it can be found, and it is in the
+              way once the box holds a name. */}
+          {!filters.search && (
+            <kbd
+              aria-hidden="true"
+              className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-ink-700 bg-ink-900 px-1.5 py-0.5 font-sans text-xs text-ink-500 sm:block"
+            >
+              /
+            </kbd>
+          )}
         </div>
 
         <label className="flex shrink-0 items-center gap-2 text-sm text-ink-400">
@@ -256,7 +321,7 @@ export default function FilterBar({
                 <input
                   type="number"
                   min="0"
-                  max="20"
+                  max={MAX_MANA_VALUE}
                   value={filters.exactMana ?? ''}
                   onChange={(event) =>
                     onFilterChange({ ...filters, exactMana: readNumber(event.target.value) })
@@ -272,7 +337,7 @@ export default function FilterBar({
                 <input
                   type="number"
                   min="0"
-                  max="20"
+                  max={MAX_MANA_VALUE}
                   value={filters.minMana ?? ''}
                   onChange={(event) =>
                     onFilterChange({ ...filters, minMana: readNumber(event.target.value) })
@@ -285,7 +350,7 @@ export default function FilterBar({
                 <input
                   type="number"
                   min="0"
-                  max="20"
+                  max={MAX_MANA_VALUE}
                   value={filters.maxMana ?? ''}
                   onChange={(event) =>
                     onFilterChange({ ...filters, maxMana: readNumber(event.target.value) })
@@ -293,6 +358,14 @@ export default function FilterBar({
                   className="mt-1 w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-gold-500"
                 />
               </label>
+
+              {/* A backwards range matches nothing, and the empty grid alone does not
+                  say which of the filters emptied it. */}
+              {isRangeBackwards && (
+                <p role="status" className="col-span-2 text-xs text-rarity-mythic">
+                  No card can cost that. Make “From” the smaller number.
+                </p>
+              )}
             </div>
           )}
         </FilterMenu>
@@ -301,7 +374,7 @@ export default function FilterBar({
           type="button"
           disabled={countActiveFilters(filters) === 0}
           onClick={() => {
-            setManaMode('exact');
+            setManaModePick(null);
             onFilterChange(EMPTY_FILTERS);
           }}
           className="ml-auto rounded-md px-3 py-2 text-sm text-ink-400 transition-colors hover:bg-ink-800 hover:text-ink-100 disabled:cursor-not-allowed disabled:text-ink-600 disabled:hover:bg-transparent"

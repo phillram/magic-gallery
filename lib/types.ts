@@ -1,7 +1,9 @@
 export type CardFace = {
   name: string;
   mana_cost?: string;
-  cmc: number;
+  // Only the card as a whole always carries a mana value. Scryfall puts one on a face
+  // for the layouts where the faces cost different amounts, and leaves it off the rest.
+  cmc?: number;
   type_line: string;
   oracle_text?: string;
   // The italic line under the rules text. It is not rules, so it is set apart.

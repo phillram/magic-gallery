@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card, FilterOptions, Set } from '@/lib/types';
 import { searchCards, fetchSets, SortKey } from '@/lib/api';
+import { appendNewCards } from '@/lib/cards';
 import { countActiveFilters } from '@/lib/analytics';
 import {
   EMPTY_FILTERS,
@@ -114,7 +115,16 @@ function CardBrowser() {
     loadSets();
   }, []);
 
+  // What the search box held when the last query went out. Only the box changes on
+  // every keystroke, so only the box needs the pause. A color, a rarity or a sort is
+  // one deliberate click, and half a second of nothing after it reads as a dead
+  // control.
+  const lastSearch = useRef(filters.search);
+
   useEffect(() => {
+    const isTyping = filters.search !== lastSearch.current;
+    lastSearch.current = filters.search;
+
     // Announce the wait before the debounce rather than after it, so the results read
     // as "more are coming" instead of briefly claiming there are none. The filters stay
     // usable through it: a control that locks under the hand costs more than a stray
@@ -145,7 +155,7 @@ function CardBrowser() {
       }
     };
 
-    const timer = setTimeout(loadCards, SEARCH_DEBOUNCE_MS);
+    const timer = setTimeout(loadCards, isTyping ? SEARCH_DEBOUNCE_MS : 0);
 
     return () => clearTimeout(timer);
   }, [filters, sort, retryCount]);
@@ -153,16 +163,28 @@ function CardBrowser() {
   const handleLoadMore = async () => {
     const generation = searchGeneration.current;
     setIsLoading(true);
+    // The button doubles as the retry, so clear the last failure while this one is in
+    // flight rather than leaving both the notice and the spinner on screen.
+    setHasFailed(false);
     try {
       const nextPage = currentPage + 1;
       const result = await searchCards(filters, nextPage, sort);
       if (generation !== searchGeneration.current) {
         return;
       }
-      setCards([...cards, ...result.cards]);
+
+      // A refused page leaves the list exactly where it was. Counting it as read would
+      // skip those cards for good, and its empty hasMore would take away the button
+      // that asks for them again.
+      if (result.failed) {
+        setHasFailed(true);
+        return;
+      }
+
+      setCards((current) => appendNewCards(current, result.cards));
       setCurrentPage(nextPage);
       setHasMore(result.hasMore);
-      setHasFailed(result.failed);
+      setHasFailed(false);
     } finally {
       if (generation === searchGeneration.current) {
         setIsLoading(false);
@@ -194,13 +216,16 @@ function CardBrowser() {
       )}
 
       {/* The count is the answer to what the filters just did, so a screen reader
-          hears it change rather than having to go looking for it. */}
+          hears it change rather than having to go looking for it. A refused search has
+          no count to give, and saying "no cards" there would blame the filters for it. */}
       <p aria-live="polite" className="text-sm text-ink-400">
         {isBusy
           ? 'Searching…'
-          : totalCards === 0
-            ? 'No cards'
-            : `Showing ${shownCount.toLocaleString('en-US')} of ${totalCards.toLocaleString('en-US')} cards`}
+          : hasFailed && cards.length === 0
+            ? 'Could not reach Scryfall'
+            : totalCards === 0
+              ? 'No cards'
+              : `Showing ${shownCount.toLocaleString('en-US')} of ${totalCards.toLocaleString('en-US')} cards`}
       </p>
 
       <CardGrid

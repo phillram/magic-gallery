@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card, FilterOptions, Set } from '@/lib/types';
 import { searchCards, fetchSets, SORT_OPTIONS, DEFAULT_SORT, SortKey } from '@/lib/api';
@@ -13,6 +13,10 @@ import CardGrid from '@/components/CardGrid';
 import Header from '@/components/Header';
 import RandomCardButton from '@/components/RandomCardButton';
 
+// Wait for a pause in the typing before searching, so a card name goes out as one
+// query instead of one query per letter.
+const SEARCH_DEBOUNCE_MS = 500;
+
 function CardBrowser() {
   const router = useRouter();
   const pathname = usePathname();
@@ -21,11 +25,17 @@ function CardBrowser() {
   const [cards, setCards] = useState<Card[]>([]);
   const [sets, setSets] = useState<Set[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchPending, setIsSearchPending] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCards, setTotalCards] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [sort, setSort] = useState<SortKey>(DEFAULT_SORT);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Each change of the filters or the sort starts a new generation of results. Requests
+  // can overlap now that the controls stay live, and the slower of two would otherwise
+  // land last and show cards for a query nobody is looking at.
+  const searchGeneration = useRef(0);
 
   // Filters are held here and mirrored into the query string, rather than read back
   // out of it. Writing the URL is asynchronous, so deriving the filters from it made
@@ -61,6 +71,10 @@ function CardBrowser() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  // The results are out of date from the first keystroke until the answer comes back,
+  // so the grid shows one state for the wait and the request together.
+  const isBusy = isSearchPending || isLoading;
+
   const activeFilterCount = countActiveFilters(filters);
 
   const setNames = useMemo(
@@ -79,40 +93,56 @@ function CardBrowser() {
 
   // Load initial cards
   useEffect(() => {
-    // Enter the loading state before the debounce rather than after it, so the wait
-    // reads as "results are coming" instead of briefly claiming there are none.
-    setIsLoading(true);
+    // Announce the wait before the debounce rather than after it, so the results read
+    // as "more are coming" instead of briefly claiming there are none. The filters stay
+    // usable through it: a control that locks under the hand costs more than a stray
+    // request, and a superseded request is dropped below.
+    setIsSearchPending(true);
+
+    searchGeneration.current += 1;
+    const generation = searchGeneration.current;
 
     const loadCards = async () => {
+      setIsLoading(true);
       try {
         const { cards: newCards, total, hasMore: moreAvailable } = await searchCards(filters, 1, sort);
+        if (generation !== searchGeneration.current) {
+          return;
+        }
         setCards(newCards);
         setTotalCards(total);
         setCurrentPage(1);
         setHasMore(moreAvailable);
       } finally {
-        setIsLoading(false);
+        if (generation === searchGeneration.current) {
+          setIsLoading(false);
+          setIsSearchPending(false);
+        }
       }
     };
 
-    const timer = setTimeout(() => {
-      loadCards();
-    }, 500);
+    const timer = setTimeout(loadCards, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
   }, [filters, sort]);
 
   const handleLoadMore = async () => {
+    const generation = searchGeneration.current;
     setIsLoading(true);
     try {
       const nextPage = currentPage + 1;
       const { cards: newCards, hasMore: moreAvailable } = await searchCards(filters, nextPage, sort);
+      if (generation !== searchGeneration.current) {
+        return;
+      }
       setCards([...cards, ...newCards]);
       setCurrentPage(nextPage);
       setHasMore(moreAvailable);
 
     } finally {
-      setIsLoading(false);
+      if (generation === searchGeneration.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -154,7 +184,6 @@ function CardBrowser() {
               filters={filters}
               onFilterChange={setFilters}
               sets={sets}
-              isLoading={isLoading}
             />
           </div>
 
@@ -163,7 +192,7 @@ function CardBrowser() {
             <ActiveFilters filters={filters} setNames={setNames} onFilterChange={setFilters} />
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <p className="text-slate-400">
-                {isLoading ? 'Loading...' : `${Math.min(cards.length, totalCards)} of ${totalCards} cards`}
+                {isBusy ? 'Loading...' : `${Math.min(cards.length, totalCards)} of ${totalCards} cards`}
               </p>
               <label className="flex items-center gap-2 text-sm text-slate-400">
                 Sort by
@@ -173,8 +202,7 @@ function CardBrowser() {
                     const nextSort = e.target.value as SortKey;
                     setSort(nextSort);
                   }}
-                  disabled={isLoading}
-                  className="px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none disabled:opacity-50"
+                  className="px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
                 >
                   {SORT_OPTIONS.map((option) => (
                     <option key={option.key} value={option.key}>
@@ -186,7 +214,7 @@ function CardBrowser() {
             </div>
             <CardGrid
               cards={cards}
-              isLoading={isLoading}
+              isLoading={isBusy}
               onLoadMore={handleLoadMore}
               hasMore={hasMore}
             />

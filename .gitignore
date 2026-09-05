@@ -3,3 +3,6 @@
 node_modules
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Local env files. Next reads these and they must never be committed.
+.env*.local

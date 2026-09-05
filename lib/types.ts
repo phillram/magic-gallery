@@ -70,6 +70,8 @@ export type Set = {
   name: string;
   released_at: string;
   card_count: number;
+  // Digital-only sets have no paper printings, so the set picker leaves them out.
+  digital?: boolean;
 };
 
 export type FilterOptions = {

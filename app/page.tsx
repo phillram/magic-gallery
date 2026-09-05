@@ -97,6 +97,7 @@ function CardBrowser() {
     // as "more are coming" instead of briefly claiming there are none. The filters stay
     // usable through it: a control that locks under the hand costs more than a stray
     // request, and a superseded request is dropped below.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the wait has to be announced before the debounce, not after
     setIsSearchPending(true);
 
     searchGeneration.current += 1;
@@ -202,7 +203,7 @@ function CardBrowser() {
                     const nextSort = e.target.value as SortKey;
                     setSort(nextSort);
                   }}
-                  className="px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded focus:border-blue-500 focus:outline-none"
+                  className="px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm focus:border-blue-500 focus:outline-hidden"
                 >
                   {SORT_OPTIONS.map((option) => (
                     <option key={option.key} value={option.key}>

@@ -67,7 +67,7 @@ export default function CardDetail({ card }: CardDetailProps) {
             <p className="text-slate-400">{displayCard.type_line}</p>
           </div>
 
-          <div className="bg-slate-800 p-4 rounded">
+          <div className="bg-slate-800 p-4 rounded-sm">
             <h2 className="text-lg font-semibold text-slate-100 mb-2">Details</h2>
             <div className="space-y-2 text-sm">
               <p>
@@ -115,13 +115,13 @@ export default function CardDetail({ card }: CardDetailProps) {
 
           <Link
             href={`/card/${card.id}/versions`}
-            className="block rounded bg-slate-800 px-4 py-3 text-center font-semibold text-blue-400 transition-colors hover:bg-slate-700 hover:text-blue-300"
+            className="block rounded-sm bg-slate-800 px-4 py-3 text-center font-semibold text-blue-400 transition-colors hover:bg-slate-700 hover:text-blue-300"
           >
             Show all versions
           </Link>
 
           {displayCard.oracle_text && (
-            <div className="bg-slate-800 p-4 rounded">
+            <div className="bg-slate-800 p-4 rounded-sm">
               <h2 className="text-lg font-semibold text-slate-100 mb-2">Card Text</h2>
               <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
                 <SymbolText text={displayCard.oracle_text} />
@@ -129,7 +129,7 @@ export default function CardDetail({ card }: CardDetailProps) {
             </div>
           )}
 
-          <div className="bg-slate-800 p-4 rounded">
+          <div className="bg-slate-800 p-4 rounded-sm">
             <h2 className="text-lg font-semibold text-slate-100 mb-3">External Links</h2>
             {(formatPrice(card.prices?.usd) || formatPrice(card.prices?.usd_foil)) && (
               <p className="mb-3 flex items-center gap-4 text-sm">
@@ -152,7 +152,7 @@ export default function CardDetail({ card }: CardDetailProps) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-center"
+                  className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-sm transition-colors text-center"
                 >
                   {name}
                 </a>

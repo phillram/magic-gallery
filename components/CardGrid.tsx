@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { Card } from '@/lib/types';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -23,8 +24,8 @@ function CardSkeleton(): JSX.Element {
     <div className="bg-slate-800 rounded-lg overflow-hidden h-full">
       <div className={cn(CARD_IMAGE_CLASSES, 'animate-pulse bg-slate-700')} />
       <div className="p-4 space-y-2">
-        <div className="h-4 w-3/4 rounded bg-slate-700 animate-pulse" />
-        <div className="h-3 w-1/2 rounded bg-slate-700 animate-pulse" />
+        <div className="h-4 w-3/4 rounded-sm bg-slate-700 animate-pulse" />
+        <div className="h-3 w-1/2 rounded-sm bg-slate-700 animate-pulse" />
       </div>
     </div>
   );
@@ -59,7 +60,7 @@ export default function CardGrid({ cards, isLoading, onLoadMore, hasMore }: Card
         className={cn(GRID_CLASSES, isLoading && 'opacity-50 transition-opacity')}
         aria-busy={isLoading}
       >
-        {cards.map((card, index) => {
+        {cards.map((card) => {
           const imageUrl = card.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.normal;
 
           return (
@@ -79,7 +80,7 @@ export default function CardGrid({ cards, isLoading, onLoadMore, hasMore }: Card
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900">
+                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-slate-700 to-slate-900">
                       <span className="text-slate-400 text-center px-4">No image available</span>
                     </div>
                   )}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
 
 export default function Header() {
   const router = useRouter();

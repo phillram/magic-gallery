@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SetOption {
@@ -139,8 +139,8 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
           onFocus={open}
           onKeyDown={handleKeyDown}
           className={cn(
-            'w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded',
-            'focus:border-blue-500 focus:outline-none',
+            'w-full px-3 py-2 bg-slate-800 text-slate-100 border border-slate-700 rounded-sm',
+            'focus:border-blue-500 focus:outline-hidden',
             selected.length > 0 && !query && 'placeholder:text-slate-100'
           )}
         />
@@ -151,7 +151,7 @@ export default function SetPicker({ sets, selected, onToggle }: SetPickerProps):
           id="set-picker-list"
           ref={listRef}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded border border-slate-700 bg-slate-800 shadow-lg"
+          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-sm border border-slate-700 bg-slate-800 shadow-lg"
         >
           {matches.length === 0 && (
             <li className="px-3 py-2 text-sm text-slate-400">No sets match “{query}”</li>

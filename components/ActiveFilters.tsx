@@ -1,7 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
 import { FilterOptions } from '@/lib/types';
-import { countActiveFilters } from '@/lib/analytics';
 import { ManaSymbol } from './ManaSymbols';
 
 interface ActiveFiltersProps {

@@ -1,31 +1,56 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-* {
-  @apply m-0 p-0 box-border;
+@custom-variant dark (&:is(.dark *));
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 }
 
-html {
-  @apply scroll-smooth;
-}
+/*
+  These belong in the base layer. Tailwind v4 puts utilities in a cascade layer, and
+  unlayered CSS outranks every layer whatever its specificity, so a bare `*` rule here
+  would beat utilities like `px-4` and strip the padding off the whole app.
+*/
+@layer base {
+  * {
+    @apply m-0 p-0 box-border;
+  }
 
-body {
-  @apply bg-slate-950 text-slate-100;
-}
+  html {
+    @apply scroll-smooth;
+  }
 
-::-webkit-scrollbar {
-  @apply w-2 h-2;
-}
+  body {
+    @apply bg-slate-950 text-slate-100;
+  }
 
-::-webkit-scrollbar-track {
-  @apply bg-slate-900;
-}
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-700 rounded-full;
-}
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600;
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
 }

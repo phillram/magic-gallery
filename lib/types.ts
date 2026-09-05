@@ -96,6 +96,15 @@ export type Set = {
   card_count: number;
   // Digital-only sets have no paper printings, so the set picker leaves them out.
   digital?: boolean;
+  // Which icon file the set really uses, which its code does not say.
+  icon_svg_uri?: string;
+};
+
+// All the browser needs of a set: what to show, and what to filter by. The rest of a
+// Scryfall set stays on the server.
+export type SetOption = {
+  code: string;
+  name: string;
 };
 
 export type FilterOptions = {

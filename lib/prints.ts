@@ -82,6 +82,28 @@ export function printVariantLabels(card: Card): string[] {
   return Array.from(new Set(labels));
 }
 
+// Which printings show the same art. Scryfall keeps the oldest printing of an art, so
+// the printing a visitor arrives from is often not the one on the page, and this is
+// what still points them at their own art.
+export function printArtKey(card: Card): string {
+  if (card.illustration_id) {
+    return card.illustration_id;
+  }
+
+  // A double-faced card is new art only when a face changed, so both faces make the key.
+  const faceIds = (card.card_faces ?? [])
+    .map((face) => face.illustration_id)
+    .filter((id): id is string => Boolean(id));
+
+  if (faceIds.length > 0) {
+    return faceIds.join('|');
+  }
+
+  // With no illustration id there is nothing to compare, so the printing stands alone
+  // rather than being matched with an unrelated one.
+  return card.id;
+}
+
 export type PrintGroup = {
   code: string;
   name: string;

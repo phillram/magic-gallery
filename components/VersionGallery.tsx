@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Card } from '@/lib/types';
 import { fetchCardPrints, PrintsUnique } from '@/lib/api';
-import { groupPrintsBySet, printVariantLabels } from '@/lib/prints';
+import { groupPrintsBySet, printArtKey, printVariantLabels } from '@/lib/prints';
 import { CARD_IMAGE_CLASSES, RarityBadge, SetIcon, VariantBadge, formatPrice } from './CardMeta';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +20,17 @@ interface VersionGalleryProps {
 
 const GRID_CLASSES = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4';
 
-function PrintTile({ print, isCurrent }: { print: Card; isCurrent: boolean }): JSX.Element {
+function PrintTile({
+  print,
+  isCurrent,
+  sharesArt,
+}: {
+  print: Card;
+  isCurrent: boolean;
+  // A different printing of the art the visitor came from, which is the closest the
+  // page can get to "you are here" once reprints are folded away.
+  sharesArt: boolean;
+}): JSX.Element {
   const imageUrl = print.image_uris?.normal ?? print.card_faces?.[0]?.image_uris?.normal;
   const variantLabels = printVariantLabels(print);
   const price = formatPrice(print.prices?.usd);
@@ -29,15 +39,20 @@ function PrintTile({ print, isCurrent }: { print: Card; isCurrent: boolean }): J
     <div
       className={cn(
         'bg-slate-800 rounded-lg overflow-hidden h-full',
-        isCurrent
-          ? 'ring-2 ring-blue-500'
-          : 'group cursor-pointer transition-shadow hover:shadow-lg hover:shadow-blue-500/50'
+        isCurrent && 'ring-2 ring-blue-500',
+        sharesArt && 'ring-2 ring-blue-500/50',
+        !isCurrent && 'group cursor-pointer transition-shadow hover:shadow-lg hover:shadow-blue-500/50'
       )}
     >
       <div className={CARD_IMAGE_CLASSES}>
-        {isCurrent && (
-          <span className="absolute left-2 top-2 z-10 rounded bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">
-            Viewing
+        {(isCurrent || sharesArt) && (
+          <span
+            className={cn(
+              'absolute left-2 top-2 z-10 rounded px-2 py-0.5 text-xs font-semibold text-white',
+              isCurrent ? 'bg-blue-600' : 'bg-blue-600/70'
+            )}
+          >
+            {isCurrent ? 'Viewing' : 'Same art'}
           </span>
         )}
         {imageUrl ? (
@@ -99,6 +114,7 @@ export default function VersionGallery({
   const [uniqueTotal, setUniqueTotal] = useState(total);
 
   const groups = useMemo(() => groupPrintsBySet(prints), [prints]);
+  const currentArtKey = useMemo(() => printArtKey(card), [card]);
 
   // The switch changes what a tile stands for, so it changes what to call one.
   const [one, many] = unique === 'art' ? ['art', 'arts'] : ['version', 'versions'];
@@ -196,7 +212,17 @@ export default function VersionGallery({
           </div>
           <div className={GRID_CLASSES}>
             {group.cards.map((print) => (
-              <PrintTile key={print.id} print={print} isCurrent={print.id === card.id} />
+              <PrintTile
+                key={print.id}
+                print={print}
+                isCurrent={print.id === card.id}
+                // Only one printing per art is on the page in this mode, so this marks
+                // one tile. Every printing of the art is here in the other mode, where
+                // marking them all would be noise.
+                sharesArt={
+                  unique === 'art' && print.id !== card.id && printArtKey(print) === currentArtKey
+                }
+              />
             ))}
           </div>
         </section>

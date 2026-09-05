@@ -39,6 +39,64 @@ export async function fetchSets(): Promise<Set[]> {
   }
 }
 
+// Two thirds of sets name their icon file after something other than their own code:
+// Theros Beyond Death Promos (pthb) uses thb.svg, Secret Lair Drop uses star.svg. A
+// code cannot be guessed into a URL, and a guess that misses 404s into a broken image,
+// so the set list is the only thing that says which file a set actually uses.
+const SET_ICON_INDEX_TTL_MS = 24 * 60 * 60 * 1000;
+
+// An index we failed to load is retried sooner, so an unreachable Scryfall costs one
+// day of generic icons only if it stays unreachable for a day.
+const SET_ICON_INDEX_RETRY_MS = 60 * 1000;
+
+// Scryfall's own stand-in, for a set the index does not know and for the window where
+// the index could not be loaded at all.
+export const FALLBACK_SET_ICON_URL = 'https://svgs.scryfall.io/sets/default.svg';
+
+type SetIconIndex = { urls: Map<string, string>; expiresAt: number };
+
+let setIconIndex: SetIconIndex | null = null;
+let setIconIndexRequest: Promise<SetIconIndex> | null = null;
+
+async function loadSetIconIndex(): Promise<SetIconIndex> {
+  try {
+    const response = await fetch(`${SCRYFALL_API_BASE}/sets`, {
+      headers: SCRYFALL_HEADERS,
+      next: { revalidate: SET_ICON_INDEX_TTL_MS / 1000 },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Scryfall set list failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const urls = new Map<string, string>();
+
+    for (const set of data.data ?? []) {
+      if (set.code && set.icon_svg_uri) {
+        urls.set(String(set.code).toLowerCase(), set.icon_svg_uri);
+      }
+    }
+
+    return { urls, expiresAt: Date.now() + SET_ICON_INDEX_TTL_MS };
+  } catch (error) {
+    console.error('Error fetching set icons:', error);
+    return { urls: new Map(), expiresAt: Date.now() + SET_ICON_INDEX_RETRY_MS };
+  }
+}
+
+// One set list answers every icon on a page, so callers that arrive together share a
+// single request rather than each asking Scryfall for the same 1000 sets.
+export async function fetchSetIconUrl(setCode: string): Promise<string> {
+  if (!setIconIndex || setIconIndex.expiresAt <= Date.now()) {
+    setIconIndexRequest ??= loadSetIconIndex();
+    setIconIndex = await setIconIndexRequest;
+    setIconIndexRequest = null;
+  }
+
+  return setIconIndex.urls.get(setCode.toLowerCase()) ?? FALLBACK_SET_ICON_URL;
+}
+
 export async function searchCards(
   filters: FilterOptions,
   page: number = 1,

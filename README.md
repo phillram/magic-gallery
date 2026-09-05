@@ -43,8 +43,9 @@ npm run dev
 
 The app starts on <http://localhost:3000>.
 
-Use `npm run build` for a production build and `npm start` to serve one. `npm run lint`
-and `npm run typecheck` check the code.
+Use `npm run build` for a production build and `npm start` to serve one. `npm run lint`,
+`npm run typecheck`, and `npm test` check the code. The tests need no dependency: they run
+on the test runner built into Node.
 
 ## How it is built
 

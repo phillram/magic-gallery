@@ -1,3 +1,4 @@
+import { nameTerms } from './search-query';
 import { Card, Set, SetOption, FilterOptions } from './types';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
@@ -143,7 +144,15 @@ export async function searchCards(
     const queryParts: string[] = [];
 
     if (filters.search) {
-      queryParts.push(`name:"${filters.search}"`);
+      const terms = nameTerms(filters.search);
+
+      // Every card matches a name filter with no word in it, so a search of nothing but
+      // quotes would answer with the whole game under a chip that says otherwise.
+      if (terms.length === 0) {
+        return { cards: [], total: 0, hasMore: false, failed: false };
+      }
+
+      queryParts.push(...terms);
     }
 
     if (filters.sets.length > 0) {

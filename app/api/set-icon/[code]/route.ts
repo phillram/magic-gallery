@@ -11,9 +11,10 @@ const CACHE_CONTROL = 'public, max-age=86400';
 // ordinary image request that needs no card data and no client-side lookup.
 export async function GET(
   _request: Request,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ): Promise<NextResponse> {
-  const iconUrl = await fetchSetIconUrl(params.code);
+  const { code } = await params;
+  const iconUrl = await fetchSetIconUrl(code);
 
   return NextResponse.redirect(iconUrl, {
     status: 307,

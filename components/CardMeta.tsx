@@ -1,7 +1,9 @@
 import { cn } from '@/lib/utils';
 
-// Scryfall serves a set's icon under its code, the same way it serves mana symbols.
-const SET_ICON_BASE_URL = 'https://svgs.scryfall.io/sets';
+// Scryfall names a set's icon file after the set the icon was drawn for, not after
+// every set that reuses it, so a set code alone does not reach the file. This route
+// looks the code up and redirects to whichever file that set really uses.
+const SET_ICON_BASE_URL = '/api/set-icon';
 
 // Magic's own rarity colors: black, silver, gold, and the orange-red of mythics.
 // Lightened here so they hold up on the dark background.
@@ -19,7 +21,7 @@ export const CARD_IMAGE_CLASSES = 'relative w-full aspect-[5/7] bg-slate-900 ove
 export function SetIcon({ setCode, className }: { setCode: string; className?: string }): JSX.Element {
   return (
     <img
-      src={`${SET_ICON_BASE_URL}/${setCode.toLowerCase()}.svg`}
+      src={`${SET_ICON_BASE_URL}/${encodeURIComponent(setCode.toLowerCase())}`}
       alt=""
       aria-hidden="true"
       // Set icons are solid black, which is invisible here, so invert them to read
